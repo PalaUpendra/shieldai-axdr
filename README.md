@@ -76,12 +76,3 @@ AXDR-Platform/
 ## 👤 Author
 **Pala Upendra** — B.Tech Final Year Project  
 GitHub: [@PalaUpendra](https://github.com/PalaUpendra)
-```
-
-6. Press **Ctrl + S** to save
-
-**Then run:**
-```
-git add README.md
-git commit -m "Add README with project overview and results"
-git push
