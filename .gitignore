@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+env/
+
+# Data (too large for GitHub)
+data/KDDTrain+.csv
+data/KDDTest+.csv
+
+# Models (too large — optional)
+models/random_forest.pkl
+models/lstm_model.keras
+models/scaler.pkl
+models/label_encoder.pkl
+xai/shap_explainer.pkl
+
+# Reports
+*.pdf
+
+# VS Code
+.vscode/
+
+# Windows
+Thumbs.db
+desktop.ini
