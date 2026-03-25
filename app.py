@@ -8,6 +8,23 @@ import os
 app = Flask(__name__)
 CORS(app)
 
+# ── Database & Auth Setup ─────────────────────────────
+from datetime import timedelta
+from flask_jwt_extended import JWTManager
+from database import db, init_db
+
+app.config['SQLALCHEMY_DATABASE_URI']        = 'postgresql://postgres:shieldai123@localhost:4000/shieldai'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['JWT_SECRET_KEY']                 = 'shieldai-secret-2026-fyp'
+app.config['JWT_ACCESS_TOKEN_EXPIRES']       = timedelta(hours=8)
+
+db.init_app(app)
+jwt = JWTManager(app)
+
+from auth import auth_bp
+app.register_blueprint(auth_bp)
+init_db(app)
+
 # ── Load models ───────────────────────────────────────
 print("Loading models...")
 rf       = joblib.load('models/random_forest.pkl')
@@ -219,7 +236,13 @@ def index():
             "/api/reputation",
             "/api/reputation/<ip>",
             "/api/predict  [POST]",
-            "/api/models"
+            "/api/models",
+            "/api/login  [POST]",
+            "/api/verify-otp  [POST]",
+            "/api/logout  [POST]",
+            "/api/me",
+            "/api/users",
+            "/api/audit"
         ]
     })
 
@@ -571,5 +594,6 @@ if __name__ == '__main__':
     print("  Dashboard  : http://127.0.0.1:5000/dashboard")
     print("  Reputation : http://127.0.0.1:5000/api/reputation")
     print("  Stats      : http://127.0.0.1:5000/api/stats")
+    print("  Login      : http://127.0.0.1:5000/api/login")
     print("="*50 + "\n")
     app.run(debug=False, port=5000)
