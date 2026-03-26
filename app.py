@@ -13,7 +13,7 @@ from datetime import timedelta
 from flask_jwt_extended import JWTManager
 from database import db, init_db
 
-app.config['SQLALCHEMY_DATABASE_URI']        = 'postgresql://postgres:shieldai123@localhost:4000/shieldai'
+app.config['SQLALCHEMY_DATABASE_URI']        = 'postgresql://postgres:Roja%40143@localhost:4000/shieldai'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY']                 = 'shieldai-secret-2026-fyp'
 app.config['JWT_ACCESS_TOKEN_EXPIRES']       = timedelta(hours=8)
