@@ -1,12 +1,12 @@
-import random, string, smtplib, requests
+import random, string, smtplib, requests, ssl
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-# ── Config — UPDATE THESE BEFORE RUNNING ─────────────
-GMAIL_USER     = "palaupendra163@gmail.com"      # ← your Gmail address
-GMAIL_PASSWORD = "ptiv bmwo iuvo cosr"         # ← Gmail App Password (16 chars)
-FAST2SMS_KEY   = "S9CjBc6NMEe1whXoU5ZAmlTFrxyO4DP2QnvzKYf8JVsHtiqgbL76EgG0Wes9tNIJwlMiZSbxUm1dY3VB"     # ← Fast2SMS API key (for SMS)
+# ── Config ────────────────────────────────────────────
+GMAIL_USER     = "palaupendra163@gmail.com"
+GMAIL_PASSWORD = "ptiv bmwo iuvo cosr"
+FAST2SMS_KEY   = "S9CjBc6NMEe1whXoU5ZAmlTFrxyO4DP2QnvzKYf8JVsHtiqgbL76EgG0Wes9tNIJwlMiZSbxUm1dY3VB"
 
 def generate_otp():
     return ''.join(random.choices(string.digits, k=6))
@@ -40,11 +40,14 @@ def send_email_otp(to_email, otp, username):
         """
         msg.attach(MIMEText(html, 'html'))
 
-        with smtplib.SMTP_SSL('smtp.gmail.com', 587) as server:
+        context = ssl.create_default_context()
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
             server.ehlo()
-            server.starttls()
+            server.starttls(context=context)
+            server.ehlo()
             server.login(GMAIL_USER, GMAIL_PASSWORD)
             server.sendmail(GMAIL_USER, to_email, msg.as_string())
+
         print(f"Email OTP sent to {to_email} ✅")
         return True
     except Exception as e:
