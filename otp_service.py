@@ -4,9 +4,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 # ── Config — UPDATE THESE BEFORE RUNNING ─────────────
-GMAIL_USER     = "your.email@gmail.com"      # ← your Gmail address
-GMAIL_PASSWORD = "your-app-password"         # ← Gmail App Password (16 chars)
-FAST2SMS_KEY   = "your-fast2sms-api-key"     # ← Fast2SMS API key (for SMS)
+GMAIL_USER     = "palaupendra163@gmail.com"      # ← your Gmail address
+GMAIL_PASSWORD = "ptiv bmwo iuvo cosr"         # ← Gmail App Password (16 chars)
+FAST2SMS_KEY   = "S9CjBc6NMEe1whXoU5ZAmlTFrxyO4DP2QnvzKYf8JVsHtiqgbL76EgG0Wes9tNIJwlMiZSbxUm1dY3VB"     # ← Fast2SMS API key (for SMS)
 
 def generate_otp():
     return ''.join(random.choices(string.digits, k=6))
@@ -40,7 +40,9 @@ def send_email_otp(to_email, otp, username):
         """
         msg.attach(MIMEText(html, 'html'))
 
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 587) as server:
+            server.ehlo()
+            server.starttls()
             server.login(GMAIL_USER, GMAIL_PASSWORD)
             server.sendmail(GMAIL_USER, to_email, msg.as_string())
         print(f"Email OTP sent to {to_email} ✅")
