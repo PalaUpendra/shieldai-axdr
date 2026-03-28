@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, redirect
 from flask_cors import CORS
 import joblib, json, random, time, threading
 import numpy as np
@@ -49,6 +49,7 @@ try:
     LSTM_OK     = True
     SEQ_LEN     = meta.get('lstm_seq_len', 10)
     lstm_buffer = []
+    lstm_lock   = threading.Lock()
     print("LSTM model loaded ✅")
 except Exception as e:
     LSTM_OK = False
@@ -102,8 +103,20 @@ ATTACK_IPS = [
     "103.21.244.0",   "192.241.0.1",  "167.99.0.1",
     "23.92.0.1",      "64.227.0.1",   "188.166.0.1"
 ]
-CITIES = ["Moscow", "Beijing", "Lagos", "Bucharest",
-          "São Paulo", "Tehran", "Kyiv", "Hanoi"]
+
+# City + country + lat/lng for geo map
+ATTACK_SOURCES = [
+    {"city": "Moscow",    "country": "Russia",       "lat": 55.75,  "lng": 37.62},
+    {"city": "Beijing",   "country": "China",        "lat": 39.90,  "lng": 116.40},
+    {"city": "Lagos",     "country": "Nigeria",      "lat": 6.52,   "lng": 3.38},
+    {"city": "Bucharest", "country": "Romania",      "lat": 44.43,  "lng": 26.10},
+    {"city": "São Paulo", "country": "Brazil",       "lat": -23.55, "lng": -46.63},
+    {"city": "Tehran",    "country": "Iran",         "lat": 35.69,  "lng": 51.39},
+    {"city": "Kyiv",      "country": "Ukraine",      "lat": 50.45,  "lng": 30.52},
+    {"city": "Hanoi",     "country": "Vietnam",      "lat": 21.03,  "lng": 105.85},
+    {"city": "Minsk",     "country": "Belarus",      "lat": 53.90,  "lng": 27.57},
+    {"city": "Pyongyang", "country": "North Korea",  "lat": 39.03,  "lng": 125.75},
+]
 
 # ── Helpers ───────────────────────────────────────────
 def make_sample():
@@ -143,15 +156,15 @@ def predict_sample(row):
     return pred_label, confidence, shap_result
 
 def lstm_predict(X_scaled_vec):
-    """Run LSTM on the rolling buffer of recent packets."""
     if not LSTM_OK:
         return None, 0.0
-    lstm_buffer.append(X_scaled_vec)
-    if len(lstm_buffer) > SEQ_LEN:
-        lstm_buffer.pop(0)
-    if len(lstm_buffer) < SEQ_LEN:
-        return None, 0.0
-    seq     = np.array(lstm_buffer, dtype=np.float32)[np.newaxis]
+    with lstm_lock:
+        lstm_buffer.append(X_scaled_vec)
+        if len(lstm_buffer) > SEQ_LEN:
+            lstm_buffer.pop(0)
+        if len(lstm_buffer) < SEQ_LEN:
+            return None, 0.0
+        seq = np.array(lstm_buffer, dtype=np.float32)[np.newaxis]
     probs   = lstm_model.predict(seq, verbose=0)[0]
     cls_idx = int(np.argmax(probs))
     conf    = float(probs[cls_idx]) * 100
@@ -166,7 +179,6 @@ def threat_generator():
         row            = make_sample()
         label, conf, shap_vals = predict_sample(row)
 
-        # LSTM sequence prediction
         X_vec = scaler.transform(pd.DataFrame([row])[features])[0]
         lstm_label, lstm_conf = lstm_predict(X_vec)
 
@@ -177,21 +189,35 @@ def threat_generator():
             "low"
         )
 
-        # Reputation update
         src_ip      = random.choice(ATTACK_IPS)
+        source      = random.choice(ATTACK_SOURCES)
         rep_score   = update_reputation(src_ip, severity, label) if label != "Normal" else 0
         blacklisted = ip_reputation.get(src_ip, {}).get("blacklisted", False)
+
+        # Autonomous response level
+        if severity == "critical":
+            response = "ISOLATE"
+        elif severity == "high":
+            response = "BLOCK"
+        elif severity == "medium":
+            response = "RATE_LIMIT"
+        else:
+            response = "ALERT"
 
         alert = {
             "id":               alert_id_counter,
             "timestamp":        time.strftime("%H:%M:%S"),
             "src_ip":           src_ip,
-            "city":             random.choice(CITIES),
+            "city":             source["city"],
+            "country":          source["country"],
+            "lat":              source["lat"],
+            "lng":              source["lng"],
             "label":            label,
             "confidence":       round(conf, 1),
             "severity":         severity,
             "shap":             shap_vals,
             "action":           "BLOCKED" if label != "Normal" else "ALLOWED",
+            "response":         response,
             "reputation_score": round(rep_score, 1),
             "blacklisted":      blacklisted,
             "lstm_label":       lstm_label,
@@ -212,6 +238,15 @@ threading.Thread(target=threat_generator, daemon=True).start()
 
 # ── Routes ────────────────────────────────────────────
 
+@app.route('/')
+def index():
+    return redirect('/login')
+
+@app.route('/login')
+def login_page():
+    frontend_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'frontend')
+    return send_from_directory(frontend_folder, 'login.html')
+
 @app.route('/dashboard')
 def dashboard():
     frontend_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'frontend')
@@ -221,30 +256,6 @@ def dashboard():
 def frontend_files(filename):
     frontend_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'frontend')
     return send_from_directory(frontend_folder, filename)
-
-@app.route('/')
-def index():
-    return jsonify({
-        "status":    "ShieldAI API running",
-        "models":    "loaded",
-        "lstm":      "loaded" if LSTM_OK else "unavailable",
-        "dashboard": "http://127.0.0.1:5000/dashboard",
-        "endpoints": [
-            "/dashboard",
-            "/api/stats",
-            "/api/alerts",
-            "/api/reputation",
-            "/api/reputation/<ip>",
-            "/api/predict  [POST]",
-            "/api/models",
-            "/api/login  [POST]",
-            "/api/verify-otp  [POST]",
-            "/api/logout  [POST]",
-            "/api/me",
-            "/api/users",
-            "/api/audit"
-        ]
-    })
 
 @app.route('/api/stats')
 def get_stats():
@@ -263,6 +274,25 @@ def get_stats():
 def get_alerts():
     limit = int(request.args.get('limit', 20))
     return jsonify(alerts[:limit])
+
+@app.route('/api/geo')
+def get_geo():
+    """Returns recent alerts with geo data for the attack map."""
+    geo_alerts = [
+        {
+            "id":       a["id"],
+            "src_ip":   a["src_ip"],
+            "city":     a["city"],
+            "country":  a.get("country", "Unknown"),
+            "lat":      a.get("lat", 0),
+            "lng":      a.get("lng", 0),
+            "label":    a["label"],
+            "severity": a["severity"],
+            "timestamp":a["timestamp"]
+        }
+        for a in alerts[:50] if a["label"] != "Normal"
+    ]
+    return jsonify(geo_alerts)
 
 @app.route('/api/reputation')
 def get_reputation():
@@ -309,6 +339,61 @@ def predict():
         "action":     "BLOCKED" if label != "Normal" else "ALLOWED"
     })
 
+@app.route('/api/simulate', methods=['POST'])
+def simulate_attack():
+    """Manually inject a specific attack type for demo purposes."""
+    global alert_id_counter
+    data        = request.json or {}
+    attack_type = data.get('type', 'DoS')
+
+    # Force a specific attack scenario
+    row = make_sample()
+    if attack_type == 'DoS':
+        row['src_bytes']   = 999999
+        row['count']       = 500
+        row['serror_rate'] = 0.9
+    elif attack_type == 'Probe':
+        row['dst_host_count'] = 255
+        row['service']        = 50
+        row['flag']           = 8
+    elif attack_type == 'BruteForce':
+        row['count']       = 400
+        row['srv_count']   = 400
+        row['serror_rate'] = 0.8
+
+    label, conf, shap_vals = predict_sample(row)
+    source  = random.choice(ATTACK_SOURCES)
+    src_ip  = random.choice(ATTACK_IPS)
+
+    alert = {
+        "id":               alert_id_counter,
+        "timestamp":        time.strftime("%H:%M:%S"),
+        "src_ip":           src_ip,
+        "city":             source["city"],
+        "country":          source["country"],
+        "lat":              source["lat"],
+        "lng":              source["lng"],
+        "label":            label,
+        "confidence":       round(conf, 1),
+        "severity":         "critical",
+        "shap":             shap_vals,
+        "action":           "BLOCKED",
+        "response":         "ISOLATE",
+        "reputation_score": 95.0,
+        "blacklisted":      True,
+        "lstm_label":       label,
+        "lstm_conf":        round(conf, 1),
+        "simulated":        True
+    }
+
+    alerts.insert(0, alert)
+    stats["total"]    += 1
+    stats["blocked"]  += 1
+    stats["incidents"] = stats["blocked"] // 5
+    alert_id_counter  += 1
+
+    return jsonify({"message": f"Simulated {attack_type} attack injected", "alert": alert})
+
 @app.route('/api/models')
 def get_models():
     return jsonify(meta)
@@ -324,7 +409,6 @@ def generate_report():
                                      Table, TableStyle, HRFlowable)
     import io
 
-    # ── Colors ────────────────────────────────────────
     NAVY   = colors.HexColor('#0f1525')
     BLUE   = colors.HexColor('#2b6cb0')
     CYAN   = colors.HexColor('#3182ce')
@@ -345,7 +429,6 @@ def generate_report():
 
     NOW = time.strftime("%Y-%m-%d %H:%M:%S")
 
-    # ── Page header/footer ────────────────────────────
     class PageDeco:
         def __init__(self): self.n = 0
         def draw(self, c, doc):
@@ -379,9 +462,8 @@ def generate_report():
             c.drawRightString(w-1.8*cm, 0.4*cm, f"Page {self.n}")
 
     deco = PageDeco()
-
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4,
+    buf  = io.BytesIO()
+    doc  = SimpleDocTemplate(buf, pagesize=A4,
         rightMargin=1.8*cm, leftMargin=1.8*cm,
         topMargin=2.5*cm,   bottomMargin=1.8*cm,
         title="ShieldAI A-XDR+ Forensic Report",
@@ -397,7 +479,6 @@ def generate_report():
 
     E = []
 
-    # ── Cover tiles ───────────────────────────────────
     E.append(Spacer(1, 0.4*cm))
     title_tbl = Table([[Paragraph(
         '<font color="#0f1525" size="18"><b>Forensic Incident Report</b></font><br/>'
@@ -431,7 +512,6 @@ def generate_report():
     E.append(tiles)
     E.append(Spacer(1, 0.3*cm))
 
-    # ── Section 1: Summary ────────────────────────────
     E.append(HRFlowable(width='100%', thickness=1.5, color=CYAN, spaceAfter=6))
     E.append(Paragraph("1.  Executive Summary", h2))
     bl = sum(1 for r in ip_reputation.values() if r["blacklisted"])
@@ -457,7 +537,6 @@ def generate_report():
     E.append(st)
     E.append(Spacer(1, 0.3*cm))
 
-    # ── Section 2: Threat Log ─────────────────────────
     E.append(HRFlowable(width='100%', thickness=1.5, color=RED, spaceAfter=6))
     E.append(Paragraph("2.  Recent Threat Log  (Last 10 Alerts)", h2))
     t_rows = [["Time","Source IP","Attack Type","Confidence","Action","Severity","Rep. Score"]]
@@ -479,7 +558,6 @@ def generate_report():
         E.append(tt)
     E.append(Spacer(1, 0.3*cm))
 
-    # ── Section 3: IP Reputation ──────────────────────
     E.append(HRFlowable(width='100%', thickness=1.5, color=GREEN, spaceAfter=6))
     E.append(Paragraph("3.  IP Reputation Scores", h2))
     E.append(Paragraph(
@@ -506,7 +584,6 @@ def generate_report():
         E.append(rt)
     E.append(Spacer(1, 0.3*cm))
 
-    # ── Section 4: SHAP ───────────────────────────────
     E.append(HRFlowable(width='100%', thickness=1.5, color=PURPLE, spaceAfter=6))
     E.append(Paragraph("4.  AI Explainability — SHAP Feature Analysis", h2))
     latest = next((a for a in alerts if a.get("shap")), None)
@@ -534,7 +611,6 @@ def generate_report():
         E.append(Paragraph("No SHAP data yet — wait 30s and retry.", body))
     E.append(Spacer(1, 0.3*cm))
 
-    # ── Section 5: Architecture ───────────────────────
     E.append(HRFlowable(width='100%', thickness=1.5, color=AMBER, spaceAfter=6))
     E.append(Paragraph("5.  System Architecture &amp; Novel Contributions", h2))
     a_rows = [
@@ -543,9 +619,9 @@ def generate_report():
         ["LSTM Detector",  "TensorFlow/Keras",   f"{meta.get('lstm_accuracy',100)}%",  "APT sequence detection — 10-packet window"],
         ["SHAP Explainer", "SHAP TreeExplainer", "Per alert",                          "Feature-level reasoning — absent in XDR"],
         ["IP Reputation",  "Flask + decay algo", "Live score",                         "Decaying blacklist — unique to ShieldAI"],
-        ["Digital Twin",   "Simulation layer",   "Pre-check",                          "Zero false-positive blocking"],
-        ["ACDA Agent",     "Custom Python",       "Autonomous",                         "Decide + act + learn loop"],
-        ["PDF Reports",    "ReportLab",           "On-demand",                          "AI-explained forensic export"],
+        ["Geo Attack Map", "Leaflet.js",         "Live map",                           "Real-time world map of attack origins"],
+        ["Simulate Mode",  "Custom API",         "On-demand",                          "Demo-ready attack injection"],
+        ["PDF Reports",    "ReportLab",          "On-demand",                          "AI-explained forensic export"],
     ]
     at = Table(a_rows, colWidths=[3.3*cm,3.5*cm,2.3*cm,7.9*cm])
     at.setStyle(TableStyle([
@@ -561,7 +637,6 @@ def generate_report():
     E.append(at)
     E.append(Spacer(1, 0.4*cm))
 
-    # Research claim box
     claim = Table([[Paragraph(
         '<font color="#1a365d"><b>Key Research Claim:</b></font>  '
         'ShieldAI is the first open-source platform combining '
@@ -578,7 +653,6 @@ def generate_report():
     ]))
     E.append(claim)
 
-    # ── Build and send ────────────────────────────────
     doc.build(E, onFirstPage=deco.draw, onLaterPages=deco.draw)
     buf.seek(0)
     from flask import send_file
@@ -590,10 +664,10 @@ if __name__ == '__main__':
     print("\n" + "="*50)
     print("  ShieldAI A-XDR+ Platform")
     print("="*50)
-    print("  API        : http://127.0.0.1:5000")
+    print("  Login      : http://127.0.0.1:5000/login")
     print("  Dashboard  : http://127.0.0.1:5000/dashboard")
-    print("  Reputation : http://127.0.0.1:5000/api/reputation")
     print("  Stats      : http://127.0.0.1:5000/api/stats")
-    print("  Login      : http://127.0.0.1:5000/api/login")
+    print("  Geo Map    : http://127.0.0.1:5000/api/geo")
+    print("  Simulate   : http://127.0.0.1:5000/api/simulate [POST]")
     print("="*50 + "\n")
     app.run(debug=False, port=5000)
