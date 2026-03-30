@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ShieldAI — A-XDR+ Platform</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
     --bg:#0a0e1a; --bg2:#0f1525; --bg3:#151c30; --card:#111827;
@@ -98,6 +100,25 @@
   .rep-score{width:45px;text-align:right;font-weight:600;}
   .rep-hits{width:40px;text-align:center;color:var(--text3);}
   .blacklisted-badge{padding:1px 6px;border-radius:4px;font-size:10px;background:rgba(252,129,129,0.2);color:var(--red);}
+  /* ── Simulate buttons ── */
+  .sim-btn{padding:10px 18px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:8px;}
+  .sim-dos{background:rgba(252,129,129,0.15);color:var(--red);border:1px solid rgba(252,129,129,0.3);}
+  .sim-dos:hover{background:rgba(252,129,129,0.3);}
+  .sim-probe{background:rgba(99,179,237,0.15);color:var(--cyan);border:1px solid rgba(99,179,237,0.3);}
+  .sim-probe:hover{background:rgba(99,179,237,0.3);}
+  .sim-brute{background:rgba(246,173,85,0.15);color:var(--amber);border:1px solid rgba(246,173,85,0.3);}
+  .sim-brute:hover{background:rgba(246,173,85,0.3);}
+  .sim-result{padding:10px 14px;border-radius:8px;font-size:12px;margin-top:12px;display:none;}
+  .sim-result.show{display:block;background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:var(--red);}
+  /* ── Response level badges ── */
+  .resp-isolate{background:rgba(252,129,129,0.2);color:var(--red);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;}
+  .resp-block{background:rgba(246,173,85,0.2);color:var(--amber);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;}
+  .resp-ratelimit{background:rgba(99,179,237,0.2);color:var(--cyan);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;}
+  .resp-alert{background:rgba(104,211,145,0.2);color:var(--green);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;}
+  /* ── Map ── */
+  #attack-map{height:420px;border-radius:10px;overflow:hidden;}
+  .leaflet-container{background:#0a0e1a !important;}
+  /* ── Bot ── */
   .bot-btn{position:fixed;bottom:60px;right:24px;width:52px;height:52px;border-radius:50%;background:var(--cyan2);border:none;cursor:pointer;font-size:22px;color:#fff;box-shadow:0 4px 20px rgba(99,179,237,0.4);z-index:1000;transition:transform .2s;}
   .bot-btn:hover{transform:scale(1.1);}
   .bot-panel{position:fixed;bottom:122px;right:24px;width:340px;background:var(--card);border:1px solid var(--border);border-radius:16px;z-index:1000;display:none;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5);}
@@ -139,9 +160,11 @@
   <nav class="nav">
     <button class="nav-item active" onclick="showPage('home',this)"><span class="nav-icon">🏠</span> Home</button>
     <button class="nav-item" onclick="showPage('alerts',this)"><span class="nav-icon">🚨</span> Live Alerts</button>
+    <button class="nav-item" onclick="showPage('geomap',this)"><span class="nav-icon">🌍</span> Geo Attack Map</button>
     <button class="nav-item" onclick="showPage('reputation',this)"><span class="nav-icon">🎯</span> IP Reputation</button>
     <button class="nav-item" onclick="showPage('analytics',this)"><span class="nav-icon">📊</span> Analytics</button>
     <button class="nav-item" onclick="showPage('incidents',this)"><span class="nav-icon">🔥</span> Incidents</button>
+    <button class="nav-item" onclick="showPage('simulate',this)"><span class="nav-icon">🧪</span> Simulate Attack</button>
     <button class="nav-item" onclick="showPage('logs',this)"><span class="nav-icon">📋</span> Logs</button>
     <button class="nav-item" onclick="showPage('models',this)"><span class="nav-icon">🧠</span> AI Models</button>
   </nav>
@@ -149,6 +172,7 @@
     <span class="status-dot"></span>
     <span id="conn-text" style="font-size:12px;color:var(--text3)">Connecting...</span>
     <div style="margin-top:8px;font-size:11px;color:var(--text3)">API: <span style="color:var(--cyan)">localhost:5000</span></div>
+    <div style="margin-top:6px;font-size:11px;color:var(--text3)" id="sidebar-user"></div>
   </div>
 </div>
 
@@ -285,6 +309,45 @@
       </div>
     </div>
 
+    <!-- GEO ATTACK MAP PAGE -->
+    <div class="page" id="page-geomap">
+      <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
+        <div class="stat-card red">
+          <div class="stat-label">Active Attack Origins</div>
+          <div class="stat-value" id="geo-origins">0</div>
+          <div class="stat-sub">Unique locations</div>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-label">Top Country</div>
+          <div class="stat-value" id="geo-top-country" style="font-size:18px">–</div>
+          <div class="stat-sub">Most attacks from</div>
+        </div>
+        <div class="stat-card cyan">
+          <div class="stat-label">Total Mapped</div>
+          <div class="stat-value" id="geo-total">0</div>
+          <div class="stat-sub">Geo-tagged threats</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-label">Last Attack</div>
+          <div class="stat-value" id="geo-last" style="font-size:16px">–</div>
+          <div class="stat-sub">Most recent origin</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">
+          Live Global Attack Map
+          <span class="badge badge-live" style="font-size:10px">● LIVE</span>
+        </div>
+        <div id="attack-map"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Recent Geo-Tagged Threats</div>
+        <div id="geo-list" style="max-height:220px;overflow-y:auto"></div>
+      </div>
+    </div>
+
     <!-- IP REPUTATION PAGE -->
     <div class="page" id="page-reputation">
       <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
@@ -335,10 +398,6 @@
               <div>Every 30 seconds → score × 0.95</div>
               <div>Score &lt; 5 → blacklist removed</div>
             </div>
-          </div>
-          <div style="margin-top:16px;padding:12px;background:var(--bg3);border-radius:8px">
-            <div style="font-size:11px;color:var(--text3);margin-bottom:6px">PAPER CLAIM</div>
-            <div style="font-size:12px;color:var(--text2)">No commercial XDR vendor provides a transparent, decaying IP reputation score with per-IP attack history and automatic blacklisting — this is unique to ShieldAI.</div>
           </div>
         </div>
       </div>
@@ -392,6 +451,66 @@
         </div>
         <div class="card" id="incident-detail">
           <div style="color:var(--text3);text-align:center;padding:40px">Select an incident to view playbook</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIMULATE ATTACK PAGE -->
+    <div class="page" id="page-simulate">
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">Attack Simulation Mode</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:20px;padding:10px 14px;background:rgba(246,173,85,0.08);border-left:3px solid var(--amber);border-radius:4px">
+          ⚠️ Injects a real attack signature into the live detection pipeline — AI models will classify it and generate a live alert.
+          Use this during your <strong style="color:var(--amber)">viva demo</strong> to show the system detecting attacks in real time.
+        </div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px">
+          <button class="sim-btn sim-dos" onclick="simulateAttack('DoS')">
+            🔴 Simulate DoS Attack
+          </button>
+          <button class="sim-btn sim-probe" onclick="simulateAttack('Probe')">
+            🔵 Simulate Port Scan
+          </button>
+          <button class="sim-btn sim-brute" onclick="simulateAttack('BruteForce')">
+            🟡 Simulate Brute Force
+          </button>
+        </div>
+        <div class="sim-result" id="sim-result"></div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">Autonomous Response Levels</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:4px">
+          <div style="padding:14px;background:rgba(104,211,145,0.08);border:1px solid rgba(104,211,145,0.2);border-radius:10px;text-align:center">
+            <div style="font-size:22px;margin-bottom:6px">🟢</div>
+            <div style="font-weight:700;color:var(--green);margin-bottom:4px">LOW</div>
+            <div style="font-size:12px;color:var(--text2)">Alert only</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">Normal traffic logged</div>
+          </div>
+          <div style="padding:14px;background:rgba(99,179,237,0.08);border:1px solid rgba(99,179,237,0.2);border-radius:10px;text-align:center">
+            <div style="font-size:22px;margin-bottom:6px">🟡</div>
+            <div style="font-weight:700;color:var(--cyan);margin-bottom:4px">MEDIUM</div>
+            <div style="font-size:12px;color:var(--text2)">Rate limit</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">Traffic throttled</div>
+          </div>
+          <div style="padding:14px;background:rgba(246,173,85,0.08);border:1px solid rgba(246,173,85,0.2);border-radius:10px;text-align:center">
+            <div style="font-size:22px;margin-bottom:6px">🔴</div>
+            <div style="font-weight:700;color:var(--amber);margin-bottom:4px">HIGH</div>
+            <div style="font-size:12px;color:var(--text2)">Block IP</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">Source IP blocked</div>
+          </div>
+          <div style="padding:14px;background:rgba(252,129,129,0.08);border:1px solid rgba(252,129,129,0.2);border-radius:10px;text-align:center">
+            <div style="font-size:22px;margin-bottom:6px">⚫</div>
+            <div style="font-weight:700;color:var(--red);margin-bottom:4px">CRITICAL</div>
+            <div style="font-size:12px;color:var(--text2)">Isolate system</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">Node quarantined</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Last Simulated Alerts</div>
+        <div id="sim-alert-list" style="max-height:280px;overflow-y:auto">
+          <div style="color:var(--text3);padding:20px;text-align:center">Run a simulation above to see results here</div>
         </div>
       </div>
     </div>
@@ -515,8 +634,8 @@
       ● FPR: 0.00% &nbsp;&nbsp;
       ● IP Reputation System Active &nbsp;&nbsp;
       ● SHAP Explainability Per Alert &nbsp;&nbsp;
-      ● Digital Twin Pre-Validation &nbsp;&nbsp;
-      ● PDF Forensic Reports Available &nbsp;&nbsp;
+      ● Geo-IP Attack Map Live &nbsp;&nbsp;
+      ● Simulate Attack Mode Ready &nbsp;&nbsp;
       ● B.Tech Final Year Project — ShieldAI A-XDR+
     </span>
   </div>
@@ -542,115 +661,152 @@
 
 <script>
 const API = 'http://127.0.0.1:5000';
-let allAlerts = [], statsData = {}, repData = [];
+let allAlerts = [], statsData = {}, repData = [], geoData = [];
 let logBlocked = 0, logAllowed = 0, logData = [];
-let trafficChart, distChart, timelineChart, repChart;
+let trafficChartInst, distChartInst, timelineChartInst, repChartInst;
+let attackMap = null, mapMarkers = [];
+let simAlerts = [];
 const startTime = Date.now();
 
+// ── Auth check ────────────────────────────────────────
+const token    = localStorage.getItem('token');
+const userName = localStorage.getItem('name') || '';
+const userRole = localStorage.getItem('role') || '';
+if (!token) { window.location.href = '/login'; }
+if (userName) {
+  document.getElementById('sidebar-user').innerHTML =
+    `<span style="color:var(--text2)">${userName}</span>
+     <span style="color:var(--text3);font-size:10px;display:block">${userRole.toUpperCase()}</span>`;
+}
+
+// ── Page routing ──────────────────────────────────────
 function showPage(id, btn) {
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-'+id).classList.add('active');
-  if(btn) btn.classList.add('active');
-  const titles={home:'Home — Overview',alerts:'Live Alerts',reputation:'IP Reputation System',analytics:'Threat Analytics',incidents:'Incident Response',logs:'Decision Logs',models:'AI Models'};
-  document.getElementById('page-title').textContent = titles[id]||id;
-  if(id==='analytics') renderAnalytics();
-  if(id==='models') renderModels();
-  if(id==='incidents') renderIncidents();
-  if(id==='reputation') renderRepPage();
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  const titles = {
+    home:'Home — Overview', alerts:'Live Alerts', geomap:'Geo Attack Map',
+    reputation:'IP Reputation System', analytics:'Threat Analytics',
+    incidents:'Incident Response', simulate:'Attack Simulation',
+    logs:'Decision Logs', models:'AI Models'
+  };
+  document.getElementById('page-title').textContent = titles[id] || id;
+  if (id === 'analytics')  renderAnalytics();
+  if (id === 'models')     renderModels();
+  if (id === 'incidents')  renderIncidents();
+  if (id === 'reputation') renderRepPage();
+  if (id === 'geomap')     initMap();
+  if (id === 'simulate')   renderSimAlerts();
 }
 
-function updateClock(){document.getElementById('clock').textContent=new Date().toLocaleTimeString();}
-setInterval(updateClock,1000); updateClock();
+function updateClock() { document.getElementById('clock').textContent = new Date().toLocaleTimeString(); }
+setInterval(updateClock, 1000); updateClock();
 
-function setConnected(ok){
-  const badge=document.getElementById('conn-badge'), text=document.getElementById('conn-text');
-  if(ok){badge.className='conn-badge conn-live';badge.textContent='● LIVE API';text.textContent='API Connected';}
-  else{badge.className='conn-badge conn-offline';badge.textContent='● OFFLINE';text.textContent='Simulation mode';}
+function setConnected(ok) {
+  const badge = document.getElementById('conn-badge'), text = document.getElementById('conn-text');
+  if (ok) { badge.className = 'conn-badge conn-live'; badge.textContent = '● LIVE API'; text.textContent = 'API Connected'; }
+  else    { badge.className = 'conn-badge conn-offline'; badge.textContent = '● OFFLINE'; text.textContent = 'Simulation mode'; }
 }
 
-async function fetchStats(){
-  try{
-    const r=await fetch(API+'/api/stats'); if(!r.ok) throw new Error();
-    statsData=await r.json(); setConnected(true);
-    document.getElementById('stat-blocked').textContent=statsData.blocked||0;
-    document.getElementById('stat-incidents').textContent=statsData.incidents||0;
-    document.getElementById('stat-accuracy').textContent=(statsData.accuracy||'–')+'%';
-    document.getElementById('stat-lstm').textContent=(statsData.lstm_accuracy||'–')+'%';
-    document.getElementById('stat-tracked').textContent=statsData.tracked_ips||0;
-    document.getElementById('stat-blacklisted').textContent=statsData.blacklisted_ips||0;
-    document.getElementById('stat-auc').textContent=statsData.auc_roc||'–';
-    document.getElementById('an-total').textContent=statsData.total||0;
-    document.getElementById('an-auc').textContent=statsData.auc_roc||'–';
-    document.getElementById('an-fpr').textContent=(statsData.fpr||0)+'%';
-    document.getElementById('m-acc').textContent=(statsData.accuracy||'–')+'%';
-    document.getElementById('m-lstm').textContent=(statsData.lstm_accuracy||'–')+'%';
-    document.getElementById('m-auc').textContent=statsData.auc_roc||'–';
-    document.getElementById('m-fpr').textContent=(statsData.fpr||0)+'%';
-    document.getElementById('rep-agent-status').textContent=(statsData.tracked_ips||0)+' IPs tracked';
-    document.getElementById('rep-tracked').textContent=statsData.tracked_ips||0;
-    document.getElementById('rep-blacklisted').textContent=statsData.blacklisted_ips||0;
-    document.getElementById('log-rate').textContent=Math.round((statsData.total||0)/Math.max(1,(Date.now()-startTime)/60000));
-  }catch(e){setConnected(false);}
+// ── Fetch stats ───────────────────────────────────────
+async function fetchStats() {
+  try {
+    const r = await fetch(API + '/api/stats'); if (!r.ok) throw new Error();
+    statsData = await r.json(); setConnected(true);
+    document.getElementById('stat-blocked').textContent    = statsData.blocked || 0;
+    document.getElementById('stat-incidents').textContent  = statsData.incidents || 0;
+    document.getElementById('stat-accuracy').textContent   = (statsData.accuracy || '–') + '%';
+    document.getElementById('stat-lstm').textContent       = (statsData.lstm_accuracy || '–') + '%';
+    document.getElementById('stat-tracked').textContent    = statsData.tracked_ips || 0;
+    document.getElementById('stat-blacklisted').textContent= statsData.blacklisted_ips || 0;
+    document.getElementById('stat-auc').textContent        = statsData.auc_roc || '–';
+    document.getElementById('an-total').textContent        = statsData.total || 0;
+    document.getElementById('an-auc').textContent          = statsData.auc_roc || '–';
+    document.getElementById('an-fpr').textContent          = (statsData.fpr || 0) + '%';
+    document.getElementById('m-acc').textContent           = (statsData.accuracy || '–') + '%';
+    document.getElementById('m-lstm').textContent          = (statsData.lstm_accuracy || '–') + '%';
+    document.getElementById('m-auc').textContent           = statsData.auc_roc || '–';
+    document.getElementById('m-fpr').textContent           = (statsData.fpr || 0) + '%';
+    document.getElementById('rep-agent-status').textContent = (statsData.tracked_ips || 0) + ' IPs tracked';
+    document.getElementById('rep-tracked').textContent     = statsData.tracked_ips || 0;
+    document.getElementById('rep-blacklisted').textContent = statsData.blacklisted_ips || 0;
+    document.getElementById('log-rate').textContent        = Math.round((statsData.total || 0) / Math.max(1, (Date.now() - startTime) / 60000));
+  } catch(e) { setConnected(false); }
 }
 
-async function fetchAlerts(){
-  try{
-    const r=await fetch(API+'/api/alerts?limit=40'); if(!r.ok) throw new Error();
-    allAlerts=await r.json();
-    renderHomeAlerts(); renderAlertsList(); addToLogs(allAlerts.slice(0,2));
-  }catch(e){if(!allAlerts.length) simulateAlert();}
+async function fetchAlerts() {
+  try {
+    const r = await fetch(API + '/api/alerts?limit=40'); if (!r.ok) throw new Error();
+    allAlerts = await r.json();
+    renderHomeAlerts(); renderAlertsList(); addToLogs(allAlerts.slice(0, 2));
+  } catch(e) { if (!allAlerts.length) simulateAlert(); }
 }
 
-async function fetchReputation(){
-  try{
-    const r=await fetch(API+'/api/reputation'); if(!r.ok) throw new Error();
-    repData=await r.json();
-    renderRepList();
-  }catch(e){}
+async function fetchReputation() {
+  try {
+    const r = await fetch(API + '/api/reputation'); if (!r.ok) throw new Error();
+    repData = await r.json(); renderRepList();
+  } catch(e) {}
 }
 
-// ── Home alerts ──────────────────────────────────────
-function renderHomeAlerts(){
-  const el=document.getElementById('home-alert-list');
-  if(!allAlerts.length) return;
-  el.innerHTML=allAlerts.slice(0,8).map(a=>`
+async function fetchGeo() {
+  try {
+    const r = await fetch(API + '/api/geo'); if (!r.ok) throw new Error();
+    geoData = await r.json();
+    updateGeoStats();
+    if (attackMap) updateMapMarkers();
+  } catch(e) {}
+}
+
+// ── Home alerts ───────────────────────────────────────
+function renderHomeAlerts() {
+  const el = document.getElementById('home-alert-list');
+  if (!allAlerts.length) return;
+  el.innerHTML = allAlerts.slice(0, 8).map(a => `
     <div class="alert-item">
       <span class="alert-ip">${a.src_ip}</span>
       <span class="alert-label">${a.label}</span>
       <span class="badge badge-${a.severity}" style="font-size:10px">${a.severity}</span>
-      ${a.blacklisted?'<span style="font-size:10px;color:var(--red)">⛔BL</span>':''}
+      ${a.blacklisted ? '<span style="font-size:10px;color:var(--red)">⛔BL</span>' : ''}
       <span class="alert-time">${a.timestamp}</span>
     </div>`).join('');
 }
 
-// ── Alerts page ──────────────────────────────────────
-let selectedAlert=null;
-function renderAlertsList(){
-  const search=(document.getElementById('alert-search')||{}).value||'';
-  const sev=(document.getElementById('sev-filter')||{}).value||'';
-  const filtered=allAlerts.filter(a=>(!sev||a.severity===sev)&&(!search||a.src_ip.includes(search)||a.label.toLowerCase().includes(search.toLowerCase())));
-  document.getElementById('alerts-list').innerHTML=filtered.slice(0,30).map(a=>`
-    <div class="alert-item ${selectedAlert&&selectedAlert.id===a.id?'selected':''}" onclick="selectAlert(${a.id})">
+// ── Alerts page ───────────────────────────────────────
+let selectedAlert = null;
+function renderAlertsList() {
+  const search = (document.getElementById('alert-search') || {}).value || '';
+  const sev    = (document.getElementById('sev-filter') || {}).value || '';
+  const filtered = allAlerts.filter(a =>
+    (!sev || a.severity === sev) &&
+    (!search || a.src_ip.includes(search) || a.label.toLowerCase().includes(search.toLowerCase()))
+  );
+  document.getElementById('alerts-list').innerHTML = filtered.slice(0, 30).map(a => `
+    <div class="alert-item ${selectedAlert && selectedAlert.id === a.id ? 'selected' : ''}" onclick="selectAlert(${a.id})">
       <span class="alert-ip">${a.src_ip}</span>
       <span class="alert-label">${a.label}</span>
       <span class="badge badge-${a.severity}" style="font-size:10px">${a.severity}</span>
-      ${a.blacklisted?'<span style="font-size:10px;color:var(--red)">⛔</span>':''}
+      ${a.blacklisted ? '<span style="font-size:10px;color:var(--red)">⛔</span>' : ''}
       <span style="font-size:11px;color:var(--text3);margin-left:auto">${a.confidence}%</span>
+      <span class="resp-${(a.response||'alert').toLowerCase().replace('_','')}" style="margin-left:4px">${a.response||'ALERT'}</span>
       <span class="alert-time">${a.timestamp}</span>
-    </div>`).join('')||'<div style="padding:20px;color:var(--text3);text-align:center">No alerts match filter</div>';
+    </div>`).join('') || '<div style="padding:20px;color:var(--text3);text-align:center">No alerts match filter</div>';
 }
 
-function selectAlert(id){
-  selectedAlert=allAlerts.find(a=>a.id===id); if(!selectedAlert) return;
+function selectAlert(id) {
+  selectedAlert = allAlerts.find(a => a.id === id); if (!selectedAlert) return;
   renderAlertsList();
-  const shap=selectedAlert.shap||[];
-  const labels7=['flag','protocol_type','src_bytes','duration','service','count','serror_rate'];
-  const shapHtml=shap.length?shap.map(s=>{
-    const pct=Math.min(100,Math.abs(s.value)*200+20);
-    const col=s.value>0?'var(--red)':'var(--cyan)';
-    return `<div class="shap-row"><div class="shap-label"><span>${s.feature}</span><span style="color:${col}">${s.value>0?'+':''}${s.value.toFixed(3)}</span></div><div class="shap-bar-bg"><div class="shap-bar-fill" style="width:${pct}%;background:${col}"></div></div></div>`;
-  }).join(''):labels7.map(f=>{const v=(Math.random()-0.3)*0.8;const pct=Math.abs(v)*120+10;const col=v>0?'var(--red)':'var(--cyan)';return `<div class="shap-row"><div class="shap-label"><span>${f}</span><span style="color:${col}">${v>0?'+':''}${v.toFixed(3)}</span></div><div class="shap-bar-bg"><div class="shap-bar-fill" style="width:${Math.min(100,pct)}%;background:${col}"></div></div></div>`;}).join('');
+  const shap = selectedAlert.shap || [];
+  const labels7 = ['flag','protocol_type','src_bytes','duration','service','count','serror_rate'];
+  const shapHtml = shap.length ? shap.map(s => {
+    const pct = Math.min(100, Math.abs(s.value) * 200 + 20);
+    const col = s.value > 0 ? 'var(--red)' : 'var(--cyan)';
+    return `<div class="shap-row"><div class="shap-label"><span>${s.feature}</span><span style="color:${col}">${s.value > 0 ? '+' : ''}${s.value.toFixed(3)}</span></div><div class="shap-bar-bg"><div class="shap-bar-fill" style="width:${pct}%;background:${col}"></div></div></div>`;
+  }).join('') : labels7.map(f => {
+    const v = (Math.random() - 0.3) * 0.8; const pct = Math.abs(v) * 120 + 10; const col = v > 0 ? 'var(--red)' : 'var(--cyan)';
+    return `<div class="shap-row"><div class="shap-label"><span>${f}</span><span style="color:${col}">${v > 0 ? '+' : ''}${v.toFixed(3)}</span></div><div class="shap-bar-bg"><div class="shap-bar-fill" style="width:${Math.min(100, pct)}%;background:${col}"></div></div></div>`;
+  }).join('');
 
   const lstmHtml = selectedAlert.lstm_label
     ? `<div style="padding:8px;background:rgba(183,148,244,0.1);border-radius:6px;font-size:12px;margin-bottom:10px">
@@ -658,18 +814,20 @@ function selectAlert(id){
         ${selectedAlert.lstm_label} (${selectedAlert.lstm_conf}% conf) — APT sequence analysis
       </div>` : '';
 
-  document.getElementById('alert-detail').innerHTML=`
+  const respClass = (selectedAlert.response || 'ALERT').toLowerCase().replace('_', '');
+  document.getElementById('alert-detail').innerHTML = `
     <div style="margin-bottom:14px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
         <span class="badge badge-${selectedAlert.severity}" style="font-size:12px;padding:4px 12px">${selectedAlert.severity.toUpperCase()}</span>
         <span style="font-size:18px;font-weight:700;color:var(--red)">${selectedAlert.label}</span>
-        ${selectedAlert.blacklisted?'<span style="color:var(--red);font-size:12px">⛔ BLACKLISTED IP</span>':''}
+        ${selectedAlert.blacklisted ? '<span style="color:var(--red);font-size:12px">⛔ BLACKLISTED IP</span>' : ''}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:var(--text2)">
         <div>Source IP: <span style="color:var(--cyan);font-family:monospace">${selectedAlert.src_ip}</span></div>
-        <div>City: <span style="color:var(--text)">${selectedAlert.city||'Unknown'}</span></div>
+        <div>Location: <span style="color:var(--text)">${selectedAlert.city || 'Unknown'}${selectedAlert.country ? ', '+selectedAlert.country : ''}</span></div>
         <div>Confidence: <span style="color:var(--amber)">${selectedAlert.confidence}%</span></div>
-        <div>Rep. Score: <span style="color:${selectedAlert.reputation_score>60?'var(--red)':selectedAlert.reputation_score>30?'var(--amber)':'var(--green)'}">${selectedAlert.reputation_score}/100</span></div>
+        <div>Rep. Score: <span style="color:${selectedAlert.reputation_score > 60 ? 'var(--red)' : selectedAlert.reputation_score > 30 ? 'var(--amber)' : 'var(--green)'}">${selectedAlert.reputation_score}/100</span></div>
+        <div>Response: <span class="resp-${respClass}">${selectedAlert.response || 'ALERT'}</span></div>
       </div>
     </div>
     ${lstmHtml}
@@ -680,7 +838,7 @@ function selectAlert(id){
       Flagged as <strong>${selectedAlert.label}</strong> with ${selectedAlert.confidence}% confidence.
       Key signals: elevated flag values and abnormal protocol distribution.
       IP reputation score: ${selectedAlert.reputation_score}/100.
-      Decision: ${selectedAlert.action}.
+      Decision: ${selectedAlert.action}. Response level: ${selectedAlert.response || 'ALERT'}.
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="action-btn danger" onclick="alert('IP blocked!')">Block IP</button>
@@ -689,133 +847,280 @@ function selectAlert(id){
     </div>`;
 }
 
-function filterAlerts(){renderAlertsList();}
+function filterAlerts() { renderAlertsList(); }
 
-// ── IP Reputation page ────────────────────────────────
-let repChartInst=null;
-function renderRepPage(){
-  renderRepList();
-  if(repChartInst) return;
-  const ctx=document.getElementById('rep-chart');
-  if(!ctx) return;
-  const labels=Array.from({length:20},(_,i)=>i+'s');
-  repChartInst=new Chart(ctx,{
-    type:'line',
-    data:{labels,datasets:[
-      {label:'185.220.101.45',data:Array.from({length:20},()=>Math.random()*60+10),borderColor:'#fc8181',tension:.4,pointRadius:0},
-      {label:'45.33.32.156',data:Array.from({length:20},()=>Math.random()*40+5),borderColor:'#f6ad55',tension:.4,pointRadius:0},
-      {label:'198.199.94.0',data:Array.from({length:20},()=>Math.random()*30+5),borderColor:'#63b3ed',tension:.4,pointRadius:0},
-    ]},
-    options:{plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}}},scales:{x:{ticks:{color:'#64748b',font:{size:10}}},y:{ticks:{color:'#64748b',font:{size:10}},max:100}},responsive:true}
-  });
-  setInterval(()=>{
-    repChartInst.data.datasets.forEach(ds=>{
-      ds.data.push(Math.min(100,ds.data[ds.data.length-1]+(Math.random()-0.3)*15));
-      if(ds.data.length>30) ds.data.shift();
-    });
-    repChartInst.data.labels=Array.from({length:repChartInst.data.datasets[0].data.length},(_,i)=>i+'s');
-    repChartInst.update('none');
-  },3000);
+// ── GEO MAP ───────────────────────────────────────────
+function initMap() {
+  if (attackMap) { updateMapMarkers(); return; }
+  attackMap = L.map('attack-map', { zoomControl: true, scrollWheelZoom: true }).setView([20, 0], 2);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CARTO', maxZoom: 18
+  }).addTo(attackMap);
+  updateMapMarkers();
 }
 
-function renderRepList(){
-  const el=document.getElementById('rep-list'); if(!el) return;
-  const data=repData.length?repData:Array.from({length:6},(_,i)=>({
-    ip:['185.220.101.45','45.33.32.156','198.199.94.0','103.21.244.0','64.227.0.1','23.92.0.1'][i],
-    score:Math.round(Math.random()*70+10),hits:Math.round(Math.random()*10+1),
-    blacklisted:false,labels:['DoS','Probe']
+function updateMapMarkers() {
+  if (!attackMap) return;
+  mapMarkers.forEach(m => attackMap.removeLayer(m));
+  mapMarkers = [];
+
+  const sources = geoData.length ? geoData : getFakeGeoData();
+  const countByCity = {};
+  sources.forEach(a => { countByCity[a.city] = (countByCity[a.city] || 0) + 1; });
+
+  const seen = new Set();
+  sources.forEach(a => {
+    if (seen.has(a.city)) return; seen.add(a.city);
+    const count = countByCity[a.city];
+    const col   = a.severity === 'critical' ? '#fc8181' : a.severity === 'high' ? '#f6ad55' : '#63b3ed';
+    const r     = Math.min(22, 8 + count * 2);
+
+    const circle = L.circleMarker([a.lat, a.lng], {
+      radius: r, fillColor: col, color: col,
+      fillOpacity: 0.7, weight: 1.5, opacity: 0.9
+    }).addTo(attackMap);
+
+    circle.bindPopup(`
+      <div style="font-family:monospace;font-size:12px;min-width:160px">
+        <strong style="color:#fc8181">${a.city}, ${a.country}</strong><br>
+        IP: ${a.src_ip}<br>
+        Type: ${a.label}<br>
+        Attacks: ${count}<br>
+        Last: ${a.timestamp}
+      </div>`);
+
+    // Pulse animation via CSS class trick
+    const marker = L.circleMarker([a.lat, a.lng], {
+      radius: r + 6, fillColor: 'transparent',
+      color: col, fillOpacity: 0, weight: 1, opacity: 0.3
+    }).addTo(attackMap);
+
+    mapMarkers.push(circle, marker);
+  });
+
+  updateGeoStats(sources);
+  renderGeoList(sources);
+}
+
+function getFakeGeoData() {
+  const sources = [
+    {city:'Moscow',country:'Russia',lat:55.75,lng:37.62,src_ip:'185.220.101.45',label:'DoS',severity:'critical',timestamp:'--:--:--'},
+    {city:'Beijing',country:'China',lat:39.90,lng:116.40,src_ip:'103.21.244.0',label:'Probe',severity:'high',timestamp:'--:--:--'},
+    {city:'Lagos',country:'Nigeria',lat:6.52,lng:3.38,src_ip:'188.166.0.1',label:'R2L',severity:'medium',timestamp:'--:--:--'},
+    {city:'Tehran',country:'Iran',lat:35.69,lng:51.39,src_ip:'167.99.0.1',label:'DoS',severity:'critical',timestamp:'--:--:--'},
+    {city:'São Paulo',country:'Brazil',lat:-23.55,lng:-46.63,src_ip:'45.33.32.156',label:'Probe',severity:'high',timestamp:'--:--:--'},
+    {city:'Hanoi',country:'Vietnam',lat:21.03,lng:105.85,src_ip:'64.227.0.1',label:'U2R',severity:'medium',timestamp:'--:--:--'},
+  ];
+  return sources;
+}
+
+function updateGeoStats(sources) {
+  const data = sources || geoData;
+  if (!data.length) return;
+  const countries = {};
+  data.forEach(a => { countries[a.country] = (countries[a.country] || 0) + 1; });
+  const topCountry = Object.entries(countries).sort((a, b) => b[1] - a[1])[0];
+  document.getElementById('geo-origins').textContent   = new Set(data.map(a => a.city)).size;
+  document.getElementById('geo-total').textContent     = data.length;
+  document.getElementById('geo-top-country').textContent = topCountry ? topCountry[0] : '–';
+  document.getElementById('geo-last').textContent      = data[0]?.city || '–';
+}
+
+function renderGeoList(sources) {
+  const data = sources || geoData;
+  const el = document.getElementById('geo-list'); if (!el) return;
+  el.innerHTML = data.slice(0, 20).map(a => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
+      <span class="badge badge-${a.severity}" style="font-size:10px;min-width:60px;text-align:center">${a.severity}</span>
+      <span style="font-family:monospace;color:var(--cyan);width:130px;flex-shrink:0">${a.src_ip}</span>
+      <span style="color:var(--text2);flex:1">${a.city}, ${a.country}</span>
+      <span style="color:var(--amber)">${a.label}</span>
+      <span style="color:var(--text3)">${a.timestamp}</span>
+    </div>`).join('') || '<div style="padding:20px;color:var(--text3);text-align:center">Waiting for geo data...</div>';
+}
+
+// ── Simulate Attack ───────────────────────────────────
+async function simulateAttack(type) {
+  const result = document.getElementById('sim-result');
+  result.className = 'sim-result';
+  result.style.display = 'block';
+  result.textContent = `Injecting ${type} attack...`;
+  result.style.background = 'rgba(246,173,85,0.1)';
+  result.style.borderColor = 'rgba(246,173,85,0.3)';
+  result.style.color = 'var(--amber)';
+
+  try {
+    const r = await fetch(API + '/api/simulate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type })
+    });
+    const data = await r.json();
+    simAlerts.unshift(data.alert);
+    renderSimAlerts();
+    result.className = 'sim-result show';
+    result.style.background = 'rgba(252,129,129,0.1)';
+    result.style.borderColor = 'rgba(252,129,129,0.3)';
+    result.style.color = 'var(--red)';
+    result.textContent = `✅ ${type} attack injected! AI classified as: ${data.alert.label} (${data.alert.confidence}% confidence) — check Live Alerts.`;
+  } catch(e) {
+    // Fallback simulation if API not running
+    const fakeAlert = {
+      id: Date.now(), timestamp: new Date().toLocaleTimeString(),
+      src_ip: '185.220.101.45', city: 'Moscow', country: 'Russia',
+      label: type === 'DoS' ? 'DoS' : type === 'Probe' ? 'Probe' : 'R2L',
+      confidence: 97.4, severity: 'critical', action: 'BLOCKED',
+      response: 'ISOLATE', reputation_score: 95, blacklisted: true, simulated: true
+    };
+    simAlerts.unshift(fakeAlert);
+    allAlerts.unshift(fakeAlert);
+    renderSimAlerts(); renderHomeAlerts(); renderAlertsList();
+    result.className = 'sim-result show';
+    result.textContent = `✅ ${type} simulated (offline mode) — ${fakeAlert.label} detected at ${fakeAlert.confidence}%`;
+  }
+}
+
+function renderSimAlerts() {
+  const el = document.getElementById('sim-alert-list'); if (!el) return;
+  if (!simAlerts.length) return;
+  el.innerHTML = simAlerts.slice(0, 10).map(a => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px">
+      <span class="badge badge-${a.severity}">${a.severity}</span>
+      <span style="font-family:monospace;color:var(--cyan)">${a.src_ip}</span>
+      <span style="color:var(--red);font-weight:600">${a.label}</span>
+      <span style="color:var(--amber)">${a.confidence}%</span>
+      <span class="resp-${(a.response||'alert').toLowerCase().replace('_','')}">${a.response||'ALERT'}</span>
+      <span style="color:var(--text3);margin-left:auto">${a.timestamp}</span>
+      ${a.simulated ? '<span style="color:var(--purple);font-size:10px">SIM</span>' : ''}
+    </div>`).join('');
+}
+
+// ── IP Reputation page ────────────────────────────────
+function renderRepPage() {
+  renderRepList();
+  if (repChartInst) return;
+  const ctx = document.getElementById('rep-chart'); if (!ctx) return;
+  const labels = Array.from({length: 20}, (_, i) => i + 's');
+  repChartInst = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [
+      {label:'185.220.101.45', data: Array.from({length:20}, () => Math.random()*60+10), borderColor:'#fc8181', tension:.4, pointRadius:0},
+      {label:'45.33.32.156',   data: Array.from({length:20}, () => Math.random()*40+5),  borderColor:'#f6ad55', tension:.4, pointRadius:0},
+      {label:'198.199.94.0',   data: Array.from({length:20}, () => Math.random()*30+5),  borderColor:'#63b3ed', tension:.4, pointRadius:0},
+    ]},
+    options: { plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}}}, scales:{x:{ticks:{color:'#64748b',font:{size:10}}},y:{ticks:{color:'#64748b',font:{size:10}},max:100}}, responsive:true }
+  });
+  setInterval(() => {
+    repChartInst.data.datasets.forEach(ds => {
+      ds.data.push(Math.min(100, ds.data[ds.data.length-1] + (Math.random()-0.3)*15));
+      if (ds.data.length > 30) ds.data.shift();
+    });
+    repChartInst.data.labels = Array.from({length: repChartInst.data.datasets[0].data.length}, (_, i) => i + 's');
+    repChartInst.update('none');
+  }, 3000);
+}
+
+function renderRepList() {
+  const el = document.getElementById('rep-list'); if (!el) return;
+  const data = repData.length ? repData : Array.from({length:6}, (_, i) => ({
+    ip: ['185.220.101.45','45.33.32.156','198.199.94.0','103.21.244.0','64.227.0.1','23.92.0.1'][i],
+    score: Math.round(Math.random()*70+10), hits: Math.round(Math.random()*10+1),
+    blacklisted: false, labels: ['DoS','Probe']
   }));
-  el.innerHTML=data.map(d=>{
-    const col=d.score>=85?'var(--red)':d.score>=50?'var(--amber)':'var(--green)';
+  el.innerHTML = data.map(d => {
+    const col = d.score >= 85 ? 'var(--red)' : d.score >= 50 ? 'var(--amber)' : 'var(--green)';
     return `<div class="rep-row">
       <span class="rep-ip">${d.ip}</span>
       <div class="rep-bar-bg"><div class="rep-bar-fill" style="width:${d.score}%;background:${col}"></div></div>
       <span class="rep-score" style="color:${col}">${d.score}</span>
       <span class="rep-hits">${d.hits}x</span>
-      ${d.blacklisted?'<span class="blacklisted-badge">BL</span>':'<span style="width:24px"></span>'}
+      ${d.blacklisted ? '<span class="blacklisted-badge">BL</span>' : '<span style="width:24px"></span>'}
     </div>`;
   }).join('');
 }
 
-// ── Logs ─────────────────────────────────────────────
-function addToLogs(alerts){
-  const el=document.getElementById('log-stream'); if(!el) return;
-  alerts.forEach(a=>{
-    const action=a.action||'ALLOW';
+// ── Logs ──────────────────────────────────────────────
+function addToLogs(alerts) {
+  const el = document.getElementById('log-stream'); if (!el) return;
+  alerts.forEach(a => {
+    const action = a.action || 'ALLOW';
     logData.push(a);
-    if(action==='BLOCKED'||action==='BLOCK') logBlocked++; else logAllowed++;
-    const line=document.createElement('div');
-    line.className='log-line';
-    line.innerHTML=`<span class="log-time">[${a.timestamp}]</span><span class="log-tag ${action.replace('ED','')}">${action}</span><span class="log-${action.replace('ED','')}">${a.label}</span> from <span style="font-family:monospace;color:var(--cyan)">${a.src_ip}</span> (RF:${a.confidence}%${a.lstm_label?' | LSTM:'+a.lstm_label:''}) rep:${a.reputation_score||0}`;
-    el.insertBefore(line,el.firstChild);
-    if(el.children.length>200) el.removeChild(el.lastChild);
+    if (action === 'BLOCKED' || action === 'BLOCK') logBlocked++; else logAllowed++;
+    const line = document.createElement('div');
+    line.className = 'log-line';
+    line.innerHTML = `<span class="log-time">[${a.timestamp}]</span><span class="log-tag ${action.replace('ED','')}">${action}</span><span class="log-${action.replace('ED','')}">${a.label}</span> from <span style="font-family:monospace;color:var(--cyan)">${a.src_ip}</span> (RF:${a.confidence}%${a.lstm_label ? ' | LSTM:'+a.lstm_label : ''}) rep:${a.reputation_score||0} <span style="color:var(--purple)">${a.response||''}</span>`;
+    el.insertBefore(line, el.firstChild);
+    if (el.children.length > 200) el.removeChild(el.lastChild);
   });
-  document.getElementById('log-blocked').textContent=logBlocked;
-  document.getElementById('log-allowed').textContent=logAllowed;
+  document.getElementById('log-blocked').textContent = logBlocked;
+  document.getElementById('log-allowed').textContent = logAllowed;
 }
 
-function clearLogs(){document.getElementById('log-stream').innerHTML='';logBlocked=0;logAllowed=0;document.getElementById('log-blocked').textContent='0';document.getElementById('log-allowed').textContent='0';}
-
-function exportLogs(){
-  const rows=[['timestamp','src_ip','label','confidence','lstm_label','reputation_score','action']];
-  logData.forEach(a=>rows.push([a.timestamp,a.src_ip,a.label,a.confidence,a.lstm_label||'',a.reputation_score||0,a.action]));
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download='shieldai-logs.csv'; a.click();
+function clearLogs() {
+  document.getElementById('log-stream').innerHTML = '';
+  logBlocked = 0; logAllowed = 0;
+  document.getElementById('log-blocked').textContent = '0';
+  document.getElementById('log-allowed').textContent = '0';
 }
 
-// ── PDF Report ────────────────────────────────────────
-function downloadReport(){
-  const a=document.createElement('a');
-  a.href=API+'/api/report'; a.target='_blank'; a.click();
+function exportLogs() {
+  const rows = [['timestamp','src_ip','label','confidence','lstm_label','reputation_score','action','response']];
+  logData.forEach(a => rows.push([a.timestamp,a.src_ip,a.label,a.confidence,a.lstm_label||'',a.reputation_score||0,a.action,a.response||'']));
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'shieldai-logs.csv'; a.click();
+}
+
+function downloadReport() {
+  const a = document.createElement('a');
+  a.href = API + '/api/report'; a.target = '_blank'; a.click();
 }
 
 // ── Analytics ─────────────────────────────────────────
-let distChartInst=null, timelineChartInst=null;
-function renderAnalytics(){
-  if(distChartInst) return;
-  const counts={};
-  allAlerts.forEach(a=>{counts[a.label]=(counts[a.label]||0)+1;});
-  const labels=Object.keys(counts).length?Object.keys(counts):['Normal','DoS','Probe','R2L','U2R'];
-  const vals=labels.map(l=>counts[l]||Math.round(Math.random()*30+5));
-  distChartInst=new Chart(document.getElementById('dist-chart'),{
-    type:'doughnut',
-    data:{labels,datasets:[{data:vals,backgroundColor:['#68d391','#fc8181','#63b3ed','#f6ad55','#b794f4'],borderWidth:0}]},
-    options:{plugins:{legend:{labels:{color:'#94a3b8',font:{size:12}}}},responsive:true}
+function renderAnalytics() {
+  if (distChartInst) return;
+  const counts = {};
+  allAlerts.forEach(a => { counts[a.label] = (counts[a.label] || 0) + 1; });
+  const labels = Object.keys(counts).length ? Object.keys(counts) : ['Normal','DoS','Probe','R2L','U2R'];
+  const vals   = labels.map(l => counts[l] || Math.round(Math.random()*30+5));
+  distChartInst = new Chart(document.getElementById('dist-chart'), {
+    type: 'doughnut',
+    data: { labels, datasets:[{data:vals,backgroundColor:['#68d391','#fc8181','#63b3ed','#f6ad55','#b794f4'],borderWidth:0}] },
+    options: { plugins:{legend:{labels:{color:'#94a3b8',font:{size:12}}}}, responsive:true }
   });
-  timelineChartInst=new Chart(document.getElementById('timeline-chart'),{
-    type:'line',
-    data:{labels:Array.from({length:24},(_,i)=>i+':00'),datasets:[{label:'Threats',data:Array.from({length:24},()=>Math.round(Math.random()*40+5)),borderColor:'#fc8181',backgroundColor:'rgba(252,129,129,0.1)',fill:true,tension:.4,pointRadius:2}]},
-    options:{plugins:{legend:{labels:{color:'#94a3b8'}}},scales:{x:{ticks:{color:'#64748b',font:{size:10}}},y:{ticks:{color:'#64748b',font:{size:10}}}},responsive:true}
+  timelineChartInst = new Chart(document.getElementById('timeline-chart'), {
+    type: 'line',
+    data: { labels: Array.from({length:24},(_,i)=>i+':00'), datasets:[{label:'Threats',data:Array.from({length:24},()=>Math.round(Math.random()*40+5)),borderColor:'#fc8181',backgroundColor:'rgba(252,129,129,0.1)',fill:true,tension:.4,pointRadius:2}] },
+    options: { plugins:{legend:{labels:{color:'#94a3b8'}}}, scales:{x:{ticks:{color:'#64748b',font:{size:10}}},y:{ticks:{color:'#64748b',font:{size:10}}}}, responsive:true }
   });
 }
 
 // ── Models ────────────────────────────────────────────
-function renderModels(){
-  const models=[
-    {name:'A-XDR+ Fusion',acc:97.3,col:'var(--cyan)'},
-    {name:'Random Forest',acc:statsData.accuracy||100,col:'var(--green)'},
-    {name:'LSTM Sequence',acc:statsData.lstm_accuracy||100,col:'var(--purple)'},
-    {name:'Autoencoder',acc:91.4,col:'var(--amber)'},
-    {name:'SVM Baseline',acc:82.1,col:'var(--text3)'},
-    {name:'Decision Tree',acc:78.5,col:'var(--text3)'},
+function renderModels() {
+  const models = [
+    {name:'A-XDR+ Fusion',   acc:97.3,                         col:'var(--cyan)'},
+    {name:'Random Forest',   acc:statsData.accuracy||100,      col:'var(--green)'},
+    {name:'LSTM Sequence',   acc:statsData.lstm_accuracy||100, col:'var(--purple)'},
+    {name:'Autoencoder',     acc:91.4,                         col:'var(--amber)'},
+    {name:'SVM Baseline',    acc:82.1,                         col:'var(--text3)'},
+    {name:'Decision Tree',   acc:78.5,                         col:'var(--text3)'},
   ];
-  document.getElementById('model-comparison').innerHTML=models.map(m=>`
+  document.getElementById('model-comparison').innerHTML = models.map(m => `
     <div class="model-row">
       <div class="model-name" style="color:${m.col}">${m.name}</div>
       <div class="model-bar-bg"><div class="model-bar-fill" style="width:${m.acc}%;background:${m.col}"></div></div>
       <div class="model-acc" style="color:${m.col}">${m.acc}%</div>
     </div>`).join('');
-  const feats=[{f:'flag',v:0.89},{f:'protocol_type',v:0.76},{f:'src_bytes',v:0.61},{f:'duration',v:0.44},{f:'service',v:0.38},{f:'count',v:0.31},{f:'serror_rate',v:0.27}];
-  document.getElementById('shap-features').innerHTML=feats.map(x=>`
+  const feats = [{f:'flag',v:.89},{f:'protocol_type',v:.76},{f:'src_bytes',v:.61},{f:'duration',v:.44},{f:'service',v:.38},{f:'count',v:.31},{f:'serror_rate',v:.27}];
+  document.getElementById('shap-features').innerHTML = feats.map(x => `
     <div class="shap-row">
       <div class="shap-label"><span>${x.f}</span><span style="color:var(--cyan)">${(x.v*100).toFixed(0)}%</span></div>
       <div class="shap-bar-bg"><div class="shap-bar-fill" style="width:${x.v*100}%;background:var(--cyan)"></div></div>
     </div>`).join('');
-  const colors={Normal:'green',DoS:'red',Probe:'medium',R2L:'purple',U2R:'high'};
-  const classes=statsData.classes||['DoS','Normal','Probe','R2L','U2R'];
-  document.getElementById('class-list').innerHTML=classes.map(c=>`
+  const colors = {Normal:'green',DoS:'red',Probe:'medium',R2L:'purple',U2R:'high'};
+  const classes = statsData.classes || ['DoS','Normal','Probe','R2L','U2R'];
+  document.getElementById('class-list').innerHTML = classes.map(c => `
     <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
       <span class="badge badge-${colors[c]||'medium'}">${c}</span>
       <span style="flex:1;font-size:12px;color:var(--text2)">${{Normal:'Legitimate traffic',DoS:'Denial of Service flood',Probe:'Network port scanning',R2L:'Remote to Local exploit',U2R:'Privilege escalation'}[c]||''}</span>
@@ -823,11 +1128,11 @@ function renderModels(){
 }
 
 // ── Incidents ─────────────────────────────────────────
-function renderIncidents(){
-  const items=allAlerts.filter(a=>a.label!=='Normal').slice(0,8);
-  if(!items.length){document.getElementById('incident-list').innerHTML='<div style="padding:20px;color:var(--text3);text-align:center">No active incidents</div>';return;}
-  document.getElementById('incident-list').innerHTML=items.map(a=>`
-    <div class="incident-item" onclick="selectIncident(${a.id})" style="padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+function renderIncidents() {
+  const items = allAlerts.filter(a => a.label !== 'Normal').slice(0, 8);
+  if (!items.length) { document.getElementById('incident-list').innerHTML = '<div style="padding:20px;color:var(--text3);text-align:center">No active incidents</div>'; return; }
+  document.getElementById('incident-list').innerHTML = items.map(a => `
+    <div onclick="selectIncident(${a.id})" style="padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <span style="font-weight:600;font-size:13px">INC-${String(a.id).padStart(4,'0')}</span>
         <span class="badge badge-${a.severity}" style="font-size:10px">${a.severity}</span>
@@ -837,17 +1142,17 @@ function renderIncidents(){
     </div>`).join('');
 }
 
-function selectIncident(id){
-  const a=allAlerts.find(x=>x.id===id); if(!a) return;
-  const steps=['Detect & Classify','Isolate Source','Block IP','Forensic Capture','Patch Vulnerability','Restore Services'];
-  const done=[true,true,false,false,false,false];
-  document.getElementById('incident-detail').innerHTML=`
+function selectIncident(id) {
+  const a = allAlerts.find(x => x.id === id); if (!a) return;
+  const steps = ['Detect & Classify','Isolate Source','Block IP','Forensic Capture','Patch Vulnerability','Restore Services'];
+  const done  = [true, true, false, false, false, false];
+  document.getElementById('incident-detail').innerHTML = `
     <div style="margin-bottom:16px">
       <div style="font-size:16px;font-weight:700;margin-bottom:4px">INC-${String(a.id).padStart(4,'0')}: ${a.label}</div>
       <div style="font-size:12px;color:var(--text2)">Source: ${a.src_ip} · ${a.timestamp} · Rep: ${a.reputation_score||0}/100</div>
     </div>
     <div class="card-title">Response Playbook</div>
-    ${steps.map((s,i)=>`
+    ${steps.map((s,i) => `
       <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
         <div style="width:20px;height:20px;border-radius:50%;background:${done[i]?'var(--green)':i===2?'var(--amber)':'var(--bg3)'};display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0">${done[i]?'✓':i===2?'…':i+1}</div>
         <span style="font-size:13px;color:${done[i]?'var(--text2)':i===2?'var(--amber)':'var(--text3)'}">${s}</span>
@@ -861,83 +1166,90 @@ function selectIncident(id){
 }
 
 // ── Traffic chart ─────────────────────────────────────
-let trafficChartInst=null;
-function initTrafficChart(){
-  const pts=Array.from({length:20},()=>Math.round(Math.random()*60+20));
-  trafficChartInst=new Chart(document.getElementById('traffic-chart'),{
-    type:'line',
-    data:{labels:pts.map((_,i)=>i+'s'),datasets:[
-      {label:'Traffic',data:[...pts],borderColor:'#63b3ed',backgroundColor:'rgba(99,179,237,0.08)',fill:true,tension:.4,pointRadius:0},
-      {label:'Anomaly Score',data:pts.map(v=>Math.min(100,v+Math.round(Math.random()*30))),borderColor:'#fc8181',backgroundColor:'rgba(252,129,129,0.06)',fill:true,tension:.4,pointRadius:0}
+function initTrafficChart() {
+  const pts = Array.from({length:20}, () => Math.round(Math.random()*60+20));
+  trafficChartInst = new Chart(document.getElementById('traffic-chart'), {
+    type: 'line',
+    data: { labels: pts.map((_,i)=>i+'s'), datasets:[
+      {label:'Traffic',       data:[...pts],                                                         borderColor:'#63b3ed',backgroundColor:'rgba(99,179,237,0.08)',fill:true,tension:.4,pointRadius:0},
+      {label:'Anomaly Score', data:pts.map(v=>Math.min(100,v+Math.round(Math.random()*30))),         borderColor:'#fc8181',backgroundColor:'rgba(252,129,129,0.06)',fill:true,tension:.4,pointRadius:0}
     ]},
-    options:{plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}}},scales:{x:{ticks:{color:'#64748b',font:{size:10}}},y:{ticks:{color:'#64748b',font:{size:10}}}},responsive:true}
+    options: { plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}}}, scales:{x:{ticks:{color:'#64748b',font:{size:10}}},y:{ticks:{color:'#64748b',font:{size:10}}}}, responsive:true }
   });
 }
 
-function updateTrafficChart(){
-  if(!trafficChartInst) return;
-  const ds=trafficChartInst.data.datasets;
+function updateTrafficChart() {
+  if (!trafficChartInst) return;
+  const ds = trafficChartInst.data.datasets;
   ds[0].data.push(Math.round(Math.random()*60+20));
   ds[1].data.push(Math.round(Math.random()*80+15));
-  if(ds[0].data.length>25){ds[0].data.shift();ds[1].data.shift();}
-  trafficChartInst.data.labels=ds[0].data.map((_,i)=>i+'s');
+  if (ds[0].data.length > 25) { ds[0].data.shift(); ds[1].data.shift(); }
+  trafficChartInst.data.labels = ds[0].data.map((_,i)=>i+'s');
   trafficChartInst.update('none');
 }
 
 // ── Simulation fallback ───────────────────────────────
-const FAKE_IPS=['185.220.101.45','45.33.32.156','198.199.94.0','103.21.244.0','192.241.0.1'];
-const LABELS=['DoS','Normal','Probe','R2L','U2R'];
-let fakeId=1;
-function simulateAlert(){
-  const label=LABELS[Math.floor(Math.random()*LABELS.length)];
-  const conf=Math.round(Math.random()*20+80);
-  const sev=label==='Normal'?'low':conf>95?'critical':conf>85?'high':'medium';
-  const rep=label==='Normal'?0:Math.round(Math.random()*60+10);
-  allAlerts.unshift({id:fakeId++,timestamp:new Date().toLocaleTimeString(),
-    src_ip:FAKE_IPS[Math.floor(Math.random()*FAKE_IPS.length)],city:'Unknown',
-    label,confidence:conf,severity:sev,action:label==='Normal'?'ALLOWED':'BLOCKED',
-    reputation_score:rep,blacklisted:rep>=85,shap:[],lstm_label:null,lstm_conf:0});
-  if(allAlerts.length>100) allAlerts.pop();
+const FAKE_IPS = ['185.220.101.45','45.33.32.156','198.199.94.0','103.21.244.0','192.241.0.1'];
+const LABELS   = ['DoS','Normal','Probe','R2L','U2R'];
+let fakeId = 1;
+function simulateAlert() {
+  const label = LABELS[Math.floor(Math.random()*LABELS.length)];
+  const conf  = Math.round(Math.random()*20+80);
+  const sev   = label === 'Normal' ? 'low' : conf > 95 ? 'critical' : conf > 85 ? 'high' : 'medium';
+  const rep   = label === 'Normal' ? 0 : Math.round(Math.random()*60+10);
+  allAlerts.unshift({
+    id: fakeId++, timestamp: new Date().toLocaleTimeString(),
+    src_ip: FAKE_IPS[Math.floor(Math.random()*FAKE_IPS.length)], city:'Unknown',
+    label, confidence:conf, severity:sev, action:label==='Normal'?'ALLOWED':'BLOCKED',
+    response: sev==='critical'?'ISOLATE':sev==='high'?'BLOCK':sev==='medium'?'RATE_LIMIT':'ALERT',
+    reputation_score:rep, blacklisted:rep>=85, shap:[], lstm_label:null, lstm_conf:0
+  });
+  if (allAlerts.length > 100) allAlerts.pop();
   renderHomeAlerts(); renderAlertsList(); addToLogs([allAlerts[0]]);
 }
 
 // ── Bot ───────────────────────────────────────────────
-let botOpen=false;
-function toggleBot(){botOpen=!botOpen;document.getElementById('bot-panel').classList.toggle('open',botOpen);}
+let botOpen = false;
+function toggleBot() { botOpen = !botOpen; document.getElementById('bot-panel').classList.toggle('open', botOpen); }
 
-async function sendBot(){
-  const inp=document.getElementById('bot-input');
-  const q=inp.value.trim(); if(!q) return; inp.value='';
-  const msgs=document.getElementById('bot-messages');
-  msgs.innerHTML+=`<div class="bot-msg user">${q}</div>`;
-  const ctx=`You are ShieldAI security assistant. Stats: ${statsData.blocked||0} threats blocked, RF accuracy ${statsData.accuracy||100}%, LSTM accuracy ${statsData.lstm_accuracy||100}%, ${statsData.tracked_ips||0} IPs tracked, ${statsData.blacklisted_ips||0} blacklisted. Answer in 2-3 sentences about cybersecurity.`;
-  let answer='';
-  try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:200,system:ctx,messages:[{role:'user',content:q}]})});
-    const d=await r.json(); answer=d.content?.[0]?.text||fallbackBot(q);
-  }catch(e){answer=fallbackBot(q);}
-  msgs.innerHTML+=`<div class="bot-msg ai">${answer}</div>`;
-  msgs.scrollTop=msgs.scrollHeight;
+async function sendBot() {
+  const inp = document.getElementById('bot-input');
+  const q = inp.value.trim(); if (!q) return; inp.value = '';
+  const msgs = document.getElementById('bot-messages');
+  msgs.innerHTML += `<div class="bot-msg user">${q}</div>`;
+  const ctx = `You are ShieldAI security assistant. Stats: ${statsData.blocked||0} threats blocked, RF accuracy ${statsData.accuracy||100}%, LSTM accuracy ${statsData.lstm_accuracy||100}%, ${statsData.tracked_ips||0} IPs tracked, ${statsData.blacklisted_ips||0} blacklisted. Answer in 2-3 sentences about cybersecurity.`;
+  let answer = '';
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:200,system:ctx,messages:[{role:'user',content:q}]})
+    });
+    const d = await r.json(); answer = d.content?.[0]?.text || fallbackBot(q);
+  } catch(e) { answer = fallbackBot(q); }
+  msgs.innerHTML += `<div class="bot-msg ai">${answer}</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
 }
 
-function fallbackBot(q){
-  q=q.toLowerCase();
-  if(q.includes('reputation')||q.includes('blacklist')) return `${statsData.tracked_ips||0} IPs tracked. Scores rise with attacks (Critical=+30, High=+20) and decay 5% every 30s. IPs scoring ≥85 are auto-blacklisted.`;
-  if(q.includes('lstm')) return `LSTM achieved ${statsData.lstm_accuracy||100}% accuracy on sequence detection. It analyzes 10-packet windows to detect APT slow attacks that single-packet models miss.`;
-  if(q.includes('shap')||q.includes('explain')) return 'SHAP shows which features caused each alert. Top features: flag (89%), protocol_type (76%), src_bytes (61%). Click any alert to see the SHAP breakdown.';
-  if(q.includes('report')||q.includes('pdf')) return 'Click the "Download Report" button in the top bar or in the Logs page to generate a full PDF forensic report with SHAP analysis, IP reputation, and incident timeline.';
-  if(q.includes('accuracy')||q.includes('model')) return `Random Forest: ${statsData.accuracy||100}% | LSTM: ${statsData.lstm_accuracy||100}% | AUC-ROC: ${statsData.auc_roc||1.0}. Both trained on NSL-KDD dataset.`;
-  return 'ShieldAI combines RF + LSTM + SHAP + IP Reputation + ACDA Agent for autonomous cyber defence. Ask about any specific component!';
+function fallbackBot(q) {
+  q = q.toLowerCase();
+  if (q.includes('reputation') || q.includes('blacklist')) return `${statsData.tracked_ips||0} IPs tracked. Scores rise with attacks (Critical=+30, High=+20) and decay 5% every 30s. IPs scoring ≥85 are auto-blacklisted.`;
+  if (q.includes('lstm'))   return `LSTM achieved ${statsData.lstm_accuracy||100}% accuracy on sequence detection. It analyzes 10-packet windows to detect APT slow attacks that single-packet models miss.`;
+  if (q.includes('shap') || q.includes('explain')) return 'SHAP shows which features caused each alert. Top features: flag (89%), protocol_type (76%), src_bytes (61%). Click any alert to see the SHAP breakdown.';
+  if (q.includes('map') || q.includes('geo')) return 'The Geo Attack Map shows real-time attack origins on a world map. Click any circle to see the IP, attack type, and location details.';
+  if (q.includes('simulat')) return 'Use the Simulate Attack page to inject DoS, Probe, or Brute Force attacks into the live pipeline. The AI will classify and respond in real time — great for viva demos!';
+  if (q.includes('report') || q.includes('pdf')) return 'Click "Download Report" in the top bar to generate a full PDF forensic report with SHAP analysis, IP reputation, and incident timeline.';
+  if (q.includes('accuracy') || q.includes('model')) return `Random Forest: ${statsData.accuracy||100}% | LSTM: ${statsData.lstm_accuracy||100}% | AUC-ROC: ${statsData.auc_roc||1.0}. Both trained on NSL-KDD dataset.`;
+  return 'ShieldAI combines RF + LSTM + SHAP + IP Reputation + Geo Map + ACDA Agent for autonomous cyber defence. Ask about any specific component!';
 }
 
 // ── Init ──────────────────────────────────────────────
 initTrafficChart();
-fetchStats(); fetchAlerts(); fetchReputation();
+fetchStats(); fetchAlerts(); fetchReputation(); fetchGeo();
 setInterval(fetchStats, 5000);
-setInterval(()=>{fetchAlerts();updateTrafficChart();}, 3000);
+setInterval(() => { fetchAlerts(); updateTrafficChart(); }, 3000);
 setInterval(fetchReputation, 8000);
-setInterval(()=>{if(!document.getElementById('conn-badge').textContent.includes('LIVE')) simulateAlert();}, 4000);
+setInterval(() => { fetchGeo(); if (attackMap) updateMapMarkers(); }, 10000);
+setInterval(() => { if (!document.getElementById('conn-badge').textContent.includes('LIVE')) simulateAlert(); }, 4000);
 </script>
 </body>
 </html>
