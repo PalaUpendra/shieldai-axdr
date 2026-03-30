@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, send_from_directory, redirect, make_response
+from flask import Flask, jsonify, request, send_from_directory, redirect
 from flask_cors import CORS
 import joblib, json, random, time, threading
 import numpy as np
@@ -10,8 +10,7 @@ CORS(app)
 
 # ── Database & Auth Setup ─────────────────────────────
 from datetime import timedelta
-from flask_jwt_extended import JWTManager, decode_token
-from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
+from flask_jwt_extended import JWTManager
 from database import db, init_db
 
 app.config['SQLALCHEMY_DATABASE_URI']        = 'postgresql://postgres:Roja%40143@localhost:4000/shieldai'
@@ -250,16 +249,6 @@ def login_page():
 
 @app.route('/dashboard')
 def dashboard():
-    # Server-side auth: check JWT from cookie (set by login.html after OTP verified)
-    token = request.cookies.get('axdr_token')
-    if not token:
-        return redirect('/login?reason=session')
-    try:
-        decode_token(token)  # raises if expired or invalid
-    except Exception:
-        resp = make_response(redirect('/login?reason=expired'))
-        resp.delete_cookie('axdr_token')
-        return resp
     frontend_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'frontend')
     return send_from_directory(frontend_folder, 'dashboard.html')
 

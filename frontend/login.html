@@ -485,10 +485,6 @@
       localStorage.setItem('role', data.role);
       localStorage.setItem('name', data.name);
 
-      // Also set a cookie so server can verify session on /dashboard
-      const expires = new Date(Date.now() + 8 * 60 * 60 * 1000).toUTCString(); // 8 hours
-      document.cookie = `axdr_token=${data.token}; path=/; expires=${expires}; SameSite=Lax`;
-
       clearInterval(timerInterval);
       showMsg('msg-otp', `Welcome ${data.name}! Redirecting...`, 'success');
 
@@ -561,20 +557,8 @@
     }
   });
 
-  // ── Show reason message if redirected from dashboard ──
-  const params = new URLSearchParams(window.location.search);
-  const reason = params.get('reason');
-  if (reason === 'expired') {
-    localStorage.clear();
-    showMsg('msg-login', '⚠️ Session expired — please login again.', 'error');
-  } else if (reason === 'session') {
-    showMsg('msg-login', '🔒 Please login to access the dashboard.', 'error');
-  }
-
   // ── Redirect if already logged in ─────────────────
-  const existingToken = localStorage.getItem('token');
-  const existingCookie = document.cookie.split(';').some(c => c.trim().startsWith('axdr_token='));
-  if (existingToken && existingCookie) {
+  if (localStorage.getItem('token')) {
     window.location.href = '/dashboard';
   }
 </script>
