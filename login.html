@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShieldAI — Login</title>
+<style>
+  :root {
+    --bg:#0a0e1a; --bg2:#0f1525; --bg3:#151c30; --card:#111827;
+    --border:rgba(99,179,237,0.15); --cyan:#63b3ed; --cyan2:#4299e1;
+    --green:#68d391; --red:#fc8181; --amber:#f6ad55;
+    --text:#e2e8f0; --text2:#94a3b8; --text3:#64748b;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Segoe UI',system-ui,sans-serif;
+    font-size:14px;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  /* ── Background grid effect ── */
+  body::before {
+    content:'';
+    position:fixed;
+    inset:0;
+    background-image:
+      linear-gradient(rgba(99,179,237,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99,179,237,0.03) 1px, transparent 1px);
+    background-size:40px 40px;
+    pointer-events:none;
+  }
+
+  .login-wrap {
+    width:100%;
+    max-width:420px;
+    padding:24px;
+    position:relative;
+    z-index:1;
+  }
+
+  /* ── Logo ── */
+  .logo {
+    text-align:center;
+    margin-bottom:32px;
+  }
+  .logo-icon {
+    width:52px; height:52px;
+    background:rgba(99,179,237,0.12);
+    border:1px solid rgba(99,179,237,0.3);
+    border-radius:14px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    font-size:24px;
+    margin-bottom:12px;
+  }
+  .logo-title {
+    font-size:22px;
+    font-weight:700;
+    color:var(--cyan);
+    letter-spacing:1px;
+  }
+  .logo-sub {
+    font-size:11px;
+    color:var(--text3);
+    letter-spacing:2px;
+    margin-top:3px;
+  }
+
+  /* ── Card ── */
+  .card {
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:32px;
+  }
+  .card-title {
+    font-size:16px;
+    font-weight:600;
+    margin-bottom:6px;
+  }
+  .card-sub {
+    font-size:13px;
+    color:var(--text2);
+    margin-bottom:24px;
+  }
+
+  /* ── Form ── */
+  .field { margin-bottom:16px; }
+  .field label {
+    display:block;
+    font-size:12px;
+    color:var(--text2);
+    margin-bottom:6px;
+    letter-spacing:0.3px;
+  }
+  .field input {
+    width:100%;
+    background:var(--bg3);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:11px 14px;
+    color:var(--text);
+    font-size:14px;
+    font-family:inherit;
+    outline:none;
+    transition:border-color .2s;
+  }
+  .field input:focus {
+    border-color:rgba(99,179,237,0.5);
+    box-shadow:0 0 0 3px rgba(99,179,237,0.08);
+  }
+  .field input::placeholder { color:var(--text3); }
+
+  /* ── OTP method toggle ── */
+  .otp-toggle {
+    display:flex;
+    gap:8px;
+    margin-bottom:16px;
+  }
+  .otp-btn {
+    flex:1;
+    padding:9px;
+    border-radius:8px;
+    border:1px solid var(--border);
+    background:var(--bg3);
+    color:var(--text2);
+    font-size:13px;
+    cursor:pointer;
+    transition:all .2s;
+    text-align:center;
+  }
+  .otp-btn.active {
+    background:rgba(99,179,237,0.12);
+    border-color:rgba(99,179,237,0.4);
+    color:var(--cyan);
+    font-weight:600;
+  }
+
+  /* ── Hint text ── */
+  .hint {
+    font-size:12px;
+    color:var(--text3);
+    margin-bottom:16px;
+    padding:10px 12px;
+    background:var(--bg3);
+    border-radius:8px;
+    border-left:3px solid var(--cyan);
+  }
+
+  /* ── OTP input boxes ── */
+  .otp-boxes {
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    margin-bottom:20px;
+  }
+  .otp-box {
+    width:48px; height:56px;
+    background:var(--bg3);
+    border:1px solid var(--border);
+    border-radius:10px;
+    text-align:center;
+    font-size:22px;
+    font-weight:700;
+    color:var(--cyan);
+    caret-color:var(--cyan);
+    outline:none;
+    transition:border-color .2s;
+    font-family:monospace;
+  }
+  .otp-box:focus {
+    border-color:rgba(99,179,237,0.6);
+    box-shadow:0 0 0 3px rgba(99,179,237,0.1);
+  }
+
+  /* ── Timer ── */
+  .timer {
+    text-align:center;
+    font-size:12px;
+    color:var(--text3);
+    margin-bottom:16px;
+  }
+  .timer span { color:var(--amber); font-weight:600; }
+
+  /* ── Buttons ── */
+  .btn {
+    width:100%;
+    padding:12px;
+    border-radius:10px;
+    border:none;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    transition:all .2s;
+    font-family:inherit;
+  }
+  .btn-primary {
+    background:var(--cyan2);
+    color:#fff;
+  }
+  .btn-primary:hover { background:#3182ce; }
+  .btn-primary:disabled {
+    opacity:0.5;
+    cursor:not-allowed;
+  }
+  .btn-ghost {
+    background:transparent;
+    color:var(--text2);
+    border:1px solid var(--border);
+    margin-top:10px;
+  }
+  .btn-ghost:hover { background:var(--bg3); color:var(--text); }
+
+  /* ── Loading spinner ── */
+  .spinner {
+    display:inline-block;
+    width:14px; height:14px;
+    border:2px solid rgba(255,255,255,0.3);
+    border-top-color:#fff;
+    border-radius:50%;
+    animation:spin .7s linear infinite;
+    margin-right:8px;
+    vertical-align:middle;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* ── Error / success messages ── */
+  .msg {
+    padding:10px 14px;
+    border-radius:8px;
+    font-size:13px;
+    margin-bottom:16px;
+    display:none;
+  }
+  .msg.error {
+    background:rgba(252,129,129,0.12);
+    border:1px solid rgba(252,129,129,0.3);
+    color:var(--red);
+    display:block;
+  }
+  .msg.success {
+    background:rgba(104,211,145,0.12);
+    border:1px solid rgba(104,211,145,0.3);
+    color:var(--green);
+    display:block;
+  }
+
+  /* ── Step indicator ── */
+  .steps {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    margin-bottom:24px;
+  }
+  .step-dot {
+    width:8px; height:8px;
+    border-radius:50%;
+    background:var(--bg3);
+    border:1px solid var(--border);
+    transition:all .3s;
+  }
+  .step-dot.active {
+    background:var(--cyan);
+    border-color:var(--cyan);
+    width:24px;
+    border-radius:4px;
+  }
+  .step-dot.done {
+    background:var(--green);
+    border-color:var(--green);
+  }
+
+  /* ── Role badge (shown after login) ── */
+  .role-badge {
+    display:inline-block;
+    padding:2px 10px;
+    border-radius:20px;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:0.5px;
+    margin-left:8px;
+  }
+  .role-admin   { background:rgba(252,129,129,0.15); color:var(--red); }
+  .role-analyst { background:rgba(246,173,85,0.15);  color:var(--amber); }
+  .role-viewer  { background:rgba(104,211,145,0.15); color:var(--green); }
+
+  /* ── Screens ── */
+  .screen { display:none; }
+  .screen.active { display:block; }
+
+  /* ── Footer ── */
+  .footer {
+    text-align:center;
+    margin-top:20px;
+    font-size:11px;
+    color:var(--text3);
+  }
+</style>
+</head>
+<body>
+
+<div class="login-wrap">
+
+  <!-- Logo -->
+  <div class="logo">
+    <div class="logo-icon">🛡</div>
+    <div class="logo-title">ShieldAI</div>
+    <div class="logo-sub">A-XDR+ PLATFORM</div>
+  </div>
+
+  <div class="card">
+
+    <!-- Step indicator -->
+    <div class="steps">
+      <div class="step-dot active" id="dot1"></div>
+      <div class="step-dot" id="dot2"></div>
+    </div>
+
+    <!-- ── Screen 1: Username + Password ── -->
+    <div class="screen active" id="screen-login">
+      <div class="card-title">Sign in to your account</div>
+      <div class="card-sub">Enter your credentials to continue</div>
+
+      <div id="msg-login" class="msg"></div>
+
+      <div class="field">
+        <label>USERNAME</label>
+        <input type="text" id="username" placeholder="Enter username" autocomplete="username">
+      </div>
+
+      <div class="field">
+        <label>PASSWORD</label>
+        <input type="password" id="password" placeholder="Enter password" autocomplete="current-password">
+      </div>
+
+      <div class="field">
+        <label>SEND OTP VIA</label>
+        <div class="otp-toggle">
+          <div class="otp-btn active" id="btn-email" onclick="selectMethod('email')">📧 Email</div>
+          <div class="otp-btn" id="btn-sms" onclick="selectMethod('sms')">📱 SMS</div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="btn-login" onclick="doLogin()">
+        Continue
+      </button>
+    </div>
+
+    <!-- ── Screen 2: OTP Verification ── -->
+    <div class="screen" id="screen-otp">
+      <div class="card-title">Verify your identity</div>
+      <div class="card-sub" id="otp-sub">Enter the 6-digit code sent to your email</div>
+
+      <div id="msg-otp" class="msg"></div>
+      <div class="hint" id="otp-hint"></div>
+
+      <div class="otp-boxes">
+        <input class="otp-box" id="o1" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,null,'o2')">
+        <input class="otp-box" id="o2" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'o1','o3')">
+        <input class="otp-box" id="o3" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'o2','o4')">
+        <input class="otp-box" id="o4" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'o3','o5')">
+        <input class="otp-box" id="o5" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'o4','o6')">
+        <input class="otp-box" id="o6" maxlength="1" type="text" inputmode="numeric" oninput="otpInput(this,'o5',null)">
+      </div>
+
+      <div class="timer">Code expires in <span id="countdown">5:00</span></div>
+
+      <button class="btn btn-primary" id="btn-verify" onclick="doVerify()">
+        Verify & Sign In
+      </button>
+      <button class="btn btn-ghost" onclick="goBack()">← Back to login</button>
+    </div>
+
+  </div>
+
+  <div class="footer">ShieldAI A-XDR+ · Autonomous Cyber Defence · FYP 2026</div>
+</div>
+
+<script>
+  const API = 'http://127.0.0.1:5000';
+  let selectedMethod = 'email';
+  let currentUsername = '';
+  let timerInterval = null;
+
+  // ── OTP method selection ──────────────────────────
+  function selectMethod(method) {
+    selectedMethod = method;
+    document.getElementById('btn-email').classList.toggle('active', method === 'email');
+    document.getElementById('btn-sms').classList.toggle('active',   method === 'sms');
+  }
+
+  // ── Show message ──────────────────────────────────
+  function showMsg(id, text, type) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'msg ' + type;
+  }
+
+  // ── Step 1: Login ─────────────────────────────────
+  async function doLogin() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+
+    if (!username || !password) {
+      showMsg('msg-login', 'Please enter username and password.', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('btn-login');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Sending OTP...';
+
+    try {
+      const res = await fetch(`${API}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, otp_method: selectedMethod })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        showMsg('msg-login', data.error || 'Login failed.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = 'Continue';
+        return;
+      }
+
+      // Success — move to OTP screen
+      currentUsername = username;
+      document.getElementById('otp-sub').textContent =
+        `Enter the 6-digit code sent to your ${selectedMethod}`;
+      document.getElementById('otp-hint').textContent =
+        data.hint ? `Code sent to: ${data.hint}` : `OTP sent via ${data.otp_method}`;
+
+      showScreen('screen-otp');
+      startTimer(300);
+      document.getElementById('o1').focus();
+
+    } catch (e) {
+      showMsg('msg-login', 'Cannot reach server. Is app.py running?', 'error');
+      btn.disabled = false;
+      btn.innerHTML = 'Continue';
+    }
+  }
+
+  // ── Step 2: Verify OTP ────────────────────────────
+  async function doVerify() {
+    const otp = ['o1','o2','o3','o4','o5','o6']
+      .map(id => document.getElementById(id).value).join('');
+
+    if (otp.length < 6) {
+      showMsg('msg-otp', 'Please enter all 6 digits.', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('btn-verify');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Verifying...';
+
+    try {
+      const res = await fetch(`${API}/api/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: currentUsername, otp })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        showMsg('msg-otp', data.error || 'Invalid OTP.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = 'Verify & Sign In';
+        return;
+      }
+
+      // Save token and user info
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('username', data.username);
+      localStorage.setItem('role', data.role);
+      localStorage.setItem('name', data.name);
+
+      clearInterval(timerInterval);
+      showMsg('msg-otp', `Welcome ${data.name}! Redirecting...`, 'success');
+
+      // Redirect to dashboard after 1 second
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 1000);
+
+    } catch (e) {
+      showMsg('msg-otp', 'Cannot reach server.', 'error');
+      btn.disabled = false;
+      btn.innerHTML = 'Verify & Sign In';
+    }
+  }
+
+  // ── OTP box auto-advance ──────────────────────────
+  function otpInput(el, prevId, nextId) {
+    const val = el.value.replace(/[^0-9]/g, '');
+    el.value = val;
+    if (val && nextId) document.getElementById(nextId).focus();
+    if (!val && prevId) document.getElementById(prevId).focus();
+  }
+
+  // ── Countdown timer ───────────────────────────────
+  function startTimer(seconds) {
+    clearInterval(timerInterval);
+    let remaining = seconds;
+    const el = document.getElementById('countdown');
+    timerInterval = setInterval(() => {
+      remaining--;
+      const m = Math.floor(remaining / 60);
+      const s = remaining % 60;
+      el.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+      if (remaining <= 0) {
+        clearInterval(timerInterval);
+        el.textContent = 'Expired';
+        el.style.color = 'var(--red)';
+      }
+    }, 1000);
+  }
+
+  // ── Screen switch ─────────────────────────────────
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    // Update step dots
+    if (id === 'screen-otp') {
+      document.getElementById('dot1').classList.remove('active');
+      document.getElementById('dot1').classList.add('done');
+      document.getElementById('dot2').classList.add('active');
+    }
+  }
+
+  function goBack() {
+    clearInterval(timerInterval);
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-login').classList.add('active');
+    document.getElementById('dot1').classList.add('active');
+    document.getElementById('dot1').classList.remove('done');
+    document.getElementById('dot2').classList.remove('active');
+    ['o1','o2','o3','o4','o5','o6'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('msg-otp').className = 'msg';
+  }
+
+  // ── Enter key support ─────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      if (document.getElementById('screen-login').classList.contains('active')) doLogin();
+      if (document.getElementById('screen-otp').classList.contains('active'))   doVerify();
+    }
+  });
+
+  // ── Redirect if already logged in ─────────────────
+  if (localStorage.getItem('token')) {
+    window.location.href = '/dashboard';
+  }
+</script>
+</body>
+</html>
