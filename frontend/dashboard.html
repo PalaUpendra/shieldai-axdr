@@ -153,113 +153,160 @@
   body.light{--bg:#f0f4f8;--bg2:#ffffff;--bg3:#e8edf2;--card:#ffffff;--border:rgba(0,0,0,0.1);--text:#1a202c;--text2:#4a5568;--text3:#718096;}
 
   /* ── Sidebar collapse ── */
-  .sidebar{width:220px;transition:width .25s ease;overflow:hidden;}
+  .sidebar{width:220px;transition:width .25s ease;overflow:hidden;position:relative;}
   .sidebar.collapsed{width:58px;}
   .sidebar.collapsed .nav-label{display:none;}
-  .sidebar.collapsed .logo-title,.sidebar.collapsed .logo-sub{display:none;}
-  .sidebar.collapsed .logo{padding:16px;display:flex;justify-content:center;}
-  .sidebar.collapsed .logo-icon-only{display:flex!important;}
+  .sidebar.collapsed .logo-text{display:none;}
+  .sidebar.collapsed .logo{padding:12px;justify-content:center;}
+  .sidebar.collapsed .logo-icon{display:flex!important;}
   .sidebar.collapsed .nav-item{justify-content:center;padding:10px;}
-  .sidebar.collapsed .status-bar .status-info{display:none;}
-  .sidebar.collapsed .profile-section{padding:8px;justify-content:center;}
-  .sidebar.collapsed .profile-info{display:none;}
-  .sidebar.collapsed .profile-actions{display:none;}
-  .logo-icon-only{display:none;font-size:22px;}
+  .sidebar.collapsed .status-info{display:none;}
+  .sidebar.collapsed .profile-info,.sidebar.collapsed .profile-chevron{display:none;}
+  .sidebar.collapsed .profile-section{padding:10px;justify-content:center;}
+  .sidebar.collapsed .profile-section{flex-direction:column;gap:6px;}
+  .sidebar.collapsed .hamburger-wrap{justify-content:center;}
+  .logo{display:flex;align-items:center;gap:10px;cursor:pointer;}
+  .logo-icon{font-size:22px;flex-shrink:0;}
+  .logo-text{}
 
-  /* ── Hamburger btn ── */
-  .hamburger{background:none;border:none;cursor:pointer;color:var(--text2);padding:4px;border-radius:6px;display:flex;flex-direction:column;gap:4px;transition:color .2s;}
-  .hamburger:hover{color:var(--text);}
+  /* ── Hamburger ── */
+  .hamburger{background:none;border:none;cursor:pointer;color:var(--text2);padding:6px;border-radius:6px;display:flex;flex-direction:column;gap:4px;transition:color .2s;}
+  .hamburger:hover{color:var(--cyan);background:var(--bg3);}
   .hamburger span{display:block;width:18px;height:2px;background:currentColor;border-radius:2px;transition:all .25s;}
 
-  /* ── Profile section ── */
-  .profile-section{padding:12px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;position:relative;}
-  .profile-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--cyan2),var(--purple));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;cursor:pointer;user-select:none;}
+  /* ── Profile at bottom ── */
+  .profile-section{padding:12px 14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;position:relative;cursor:pointer;transition:background .2s;}
+  .profile-section:hover{background:var(--bg3);}
+  .profile-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#4299e1,#b794f4);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;user-select:none;}
   .profile-info{flex:1;min-width:0;}
   .profile-name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .profile-role{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;}
-  .profile-actions{display:flex;gap:4px;}
+  .profile-chevron{font-size:10px;color:var(--text3);}
 
-  /* ── Profile dropdown ── */
-  .profile-dropdown{position:absolute;bottom:60px;left:12px;right:12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px;z-index:200;display:none;box-shadow:0 8px 32px rgba(0,0,0,.4);}
-  .profile-dropdown.open{display:block;}
-  .profile-dropdown-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text2);transition:background .15s;border:none;background:none;width:100%;text-align:left;}
-  .profile-dropdown-item:hover{background:var(--bg3);color:var(--text);}
-  .profile-dropdown-item.danger{color:var(--red);}
-  .profile-dropdown-item.danger:hover{background:rgba(252,129,129,0.1);}
-  .profile-dropdown-divider{height:1px;background:var(--border);margin:6px 0;}
+  /* ── Profile popup ── */
+  .profile-popup{position:absolute;bottom:70px;left:10px;right:10px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:0;z-index:500;display:none;box-shadow:0 12px 40px rgba(0,0,0,.5);overflow:hidden;}
+  .profile-popup.open{display:block;animation:popIn .15s ease;}
+  @keyframes popIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .pp-header{padding:14px 16px;background:linear-gradient(135deg,rgba(99,179,237,0.15),rgba(183,148,244,0.15));border-bottom:1px solid var(--border);}
+  .pp-avatar-row{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+  .pp-avatar-big{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#4299e1,#b794f4);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;}
+  .pp-name{font-size:14px;font-weight:700;color:var(--text);}
+  .pp-username{font-size:11px;color:var(--text3);}
+  .pp-role-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.5px;margin-top:4px;}
+  .pp-role-admin{background:rgba(252,129,129,0.2);color:var(--red);}
+  .pp-role-analyst{background:rgba(246,173,85,0.2);color:var(--amber);}
+  .pp-role-viewer{background:rgba(104,211,145,0.2);color:var(--green);}
+  .pp-body{padding:8px;}
+  .pp-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text2);transition:background .15s;border:none;background:none;width:100%;text-align:left;}
+  .pp-item:hover{background:var(--bg3);color:var(--text);}
+  .pp-item.danger{color:var(--red);}
+  .pp-item.danger:hover{background:rgba(252,129,129,0.1);}
+  .pp-divider{height:1px;background:var(--border);margin:4px 8px;}
+  .pp-session-row{padding:8px 12px;font-size:11px;color:var(--text3);display:flex;align-items:center;justify-content:space-between;}
 
-  /* ── Theme toggle btn ── */
-  .theme-toggle{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:4px 10px;cursor:pointer;font-size:12px;color:var(--text2);transition:all .2s;}
-  .theme-toggle:hover{color:var(--text);}
+  /* ── Session timer in topbar ── */
+  .session-badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(99,179,237,0.15);color:var(--cyan);border:1px solid rgba(99,179,237,0.3);}
+  .session-badge.warn{background:rgba(246,173,85,0.15);color:var(--amber);border-color:rgba(246,173,85,0.3);}
+  .session-badge.danger{background:rgba(252,129,129,0.15);color:var(--red);border-color:rgba(252,129,129,0.3);}
 
-  /* ── Session timer ── */
-  .session-badge{background:rgba(246,173,85,0.15);color:var(--amber);border:1px solid rgba(246,173,85,0.3);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+  /* ── Idle overlay ── */
+  .idle-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9000;display:none;align-items:center;justify-content:center;}
+  .idle-overlay.show{display:flex;}
+  .idle-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;text-align:center;max-width:380px;width:90%;}
+  .idle-card h3{font-size:18px;font-weight:700;margin-bottom:8px;color:var(--text);}
+  .idle-card p{font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6;}
+  .idle-countdown{font-size:42px;font-weight:700;color:var(--amber);margin:16px 0;}
+  .idle-btn-row{display:flex;gap:10px;justify-content:center;}
+  .idle-btn-continue{background:var(--cyan2);color:#fff;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;}
+  .idle-btn-logout{background:transparent;color:var(--red);border:1px solid rgba(252,129,129,0.4);padding:10px 24px;border-radius:8px;cursor:pointer;font-size:14px;}
+
+  /* ── Theme toggle ── */
+  .theme-icon{font-size:15px;}
 </style>
 </head>
 <body>
 
 <div class="sidebar" id="sidebar">
-  <div class="logo">
-    <span class="logo-icon-only">🛡</span>
-    <div>
-      <div class="logo-title">🛡 ShieldAI</div>
-      <div class="logo-sub">A-XDR+ PLATFORM</div>
+
+  <!-- Logo — click goes to Home -->
+  <div class="logo" onclick="goHome()" style="padding:18px 16px;border-bottom:1px solid var(--border);" title="Go to Home">
+    <span class="logo-icon">🛡</span>
+    <div class="logo-text">
+      <div style="font-size:17px;font-weight:700;color:var(--cyan);letter-spacing:1px;">ShieldAI</div>
+      <div style="font-size:10px;color:var(--text3);letter-spacing:2px;">A-XDR+ PLATFORM</div>
     </div>
   </div>
-  <nav class="nav">
-    <button class="nav-item active" onclick="showPage('home',this)"><span class="nav-icon">🏠</span><span class="nav-label"> Home</span></button>
-    <button class="nav-item" onclick="showPage('alerts',this)"><span class="nav-icon">🚨</span><span class="nav-label"> Live Alerts</span></button>
-    <button class="nav-item" onclick="showPage('geomap',this)"><span class="nav-icon">🌍</span><span class="nav-label"> Geo Attack Map</span></button>
-    <button class="nav-item" onclick="showPage('reputation',this)"><span class="nav-icon">🎯</span><span class="nav-label"> IP Reputation</span></button>
-    <button class="nav-item" onclick="showPage('analytics',this)"><span class="nav-icon">📊</span><span class="nav-label"> Analytics</span></button>
-    <button class="nav-item" onclick="showPage('incidents',this)"><span class="nav-icon">🔥</span><span class="nav-label"> Incidents</span></button>
-    <button class="nav-item" onclick="showPage('simulate',this)"><span class="nav-icon">🧪</span><span class="nav-label"> Simulate Attack</span></button>
-    <button class="nav-item" onclick="showPage('logs',this)"><span class="nav-icon">📋</span><span class="nav-label"> Logs</span></button>
-    <button class="nav-item" onclick="showPage('models',this)"><span class="nav-icon">🧠</span><span class="nav-label"> AI Models</span></button>
+
+  <!-- Nav items — all visible -->
+  <nav class="nav" style="flex:1;padding:10px 8px;overflow-y:auto;">
+    <button class="nav-item active" id="nav-home" onclick="showPage('home',this)"><span class="nav-icon">🏠</span><span class="nav-label"> Home</span></button>
+    <button class="nav-item" id="nav-alerts" onclick="showPage('alerts',this)"><span class="nav-icon">🚨</span><span class="nav-label"> Live Alerts</span></button>
+    <button class="nav-item" id="nav-geomap" onclick="showPage('geomap',this)"><span class="nav-icon">🌍</span><span class="nav-label"> Geo Attack Map</span></button>
+    <button class="nav-item" id="nav-reputation" onclick="showPage('reputation',this)"><span class="nav-icon">🎯</span><span class="nav-label"> IP Reputation</span></button>
+    <button class="nav-item" id="nav-analytics" onclick="showPage('analytics',this)"><span class="nav-icon">📊</span><span class="nav-label"> Analytics</span></button>
+    <button class="nav-item" id="nav-incidents" onclick="showPage('incidents',this)"><span class="nav-icon">🔥</span><span class="nav-label"> Incidents</span></button>
+    <button class="nav-item" id="nav-simulate" onclick="showPage('simulate',this)"><span class="nav-icon">🧪</span><span class="nav-label"> Simulate Attack</span></button>
+    <button class="nav-item" id="nav-logs" onclick="showPage('logs',this)"><span class="nav-icon">📋</span><span class="nav-label"> Logs</span></button>
+    <button class="nav-item" id="nav-models" onclick="showPage('models',this)"><span class="nav-icon">🧠</span><span class="nav-label"> AI Models</span></button>
   </nav>
-  <div class="status-bar">
+
+  <!-- Connection status -->
+  <div class="status-bar" style="padding:10px 16px;border-top:1px solid var(--border);">
     <span class="status-dot"></span>
     <span class="status-info" id="conn-text" style="font-size:12px;color:var(--text3)">Connecting...</span>
-    <div class="status-info" style="margin-top:8px;font-size:11px;color:var(--text3)">API: <span style="color:var(--cyan)">localhost:5000</span></div>
+    <div class="status-info" style="margin-top:4px;font-size:11px;color:var(--text3)">API: <span style="color:var(--cyan)">:5000</span></div>
   </div>
 
-  <!-- Profile section -->
-  <div class="profile-section" id="profile-section">
-    <div class="profile-avatar" id="profile-avatar" onclick="toggleProfileDropdown()">?</div>
+  <!-- Profile section at bottom -->
+  <div class="profile-section" id="profile-section" onclick="toggleProfilePopup()">
+    <div class="profile-avatar" id="profile-avatar">?</div>
     <div class="profile-info">
       <div class="profile-name" id="profile-name">User</div>
-      <div class="profile-role" id="profile-role">viewer</div>
+      <div class="profile-role" id="profile-role">VIEWER</div>
     </div>
-    <div class="profile-actions">
-      <button class="hamburger" onclick="toggleSidebar()" title="Toggle sidebar">
-        <span></span><span></span><span></span>
-      </button>
-    </div>
+    <span class="profile-chevron">▲</span>
 
-    <!-- Dropdown menu -->
-    <div class="profile-dropdown" id="profile-dropdown">
-      <div style="padding:10px 12px;border-bottom:1px solid var(--border);margin-bottom:6px">
-        <div style="font-size:13px;font-weight:600;color:var(--text)" id="dd-name">User</div>
-        <div style="font-size:11px;color:var(--text3)" id="dd-email">Signed in</div>
+    <!-- Profile popup (opens upward) -->
+    <div class="profile-popup" id="profile-popup" onclick="event.stopPropagation()">
+      <div class="pp-header">
+        <div class="pp-avatar-row">
+          <div class="pp-avatar-big" id="pp-avatar-big">?</div>
+          <div>
+            <div class="pp-name" id="pp-name">User</div>
+            <div class="pp-username" id="pp-username">username</div>
+            <div class="pp-role-badge pp-role-viewer" id="pp-role-badge">VIEWER</div>
+          </div>
+        </div>
       </div>
-      <button class="profile-dropdown-item" onclick="toggleTheme()">
-        <span id="theme-icon">☀️</span><span id="theme-label">Light Mode</span>
-      </button>
-      <button class="profile-dropdown-item" onclick="showPage('logs',null);toggleProfileDropdown()">
-        📋 <span>Activity Logs</span>
-      </button>
-      <div class="profile-dropdown-divider"></div>
-      <button class="profile-dropdown-item danger" onclick="doLogout()">
-        🚪 <span>Sign Out</span>
-      </button>
+      <div class="pp-session-row">
+        <span>Session expires in</span>
+        <span id="pp-session-time" style="color:var(--amber);font-weight:600;">8:00:00</span>
+      </div>
+      <div class="pp-divider"></div>
+      <div class="pp-body">
+        <button class="pp-item" onclick="toggleTheme();toggleProfilePopup()">
+          <span class="theme-icon" id="theme-icon">☀️</span>
+          <span id="theme-label">Light Mode</span>
+        </button>
+        <button class="pp-item" onclick="toggleSidebar();toggleProfilePopup()">
+          ☰ <span id="sidebar-toggle-label">Collapse Sidebar</span>
+        </button>
+        <button class="pp-item" onclick="showPage('logs',document.getElementById('nav-logs'));toggleProfilePopup()">
+          📋 <span>Activity Logs</span>
+        </button>
+        <div class="pp-divider"></div>
+        <button class="pp-item danger" onclick="doLogout()">
+          🚪 <span>Sign Out</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>
 
 <div class="main">
   <div class="topbar">
-    <div style="display:flex;align-items:center;gap:12px">
-      <button class="hamburger" onclick="toggleSidebar()" title="Toggle sidebar" style="padding:6px">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="hamburger" onclick="toggleSidebar()" title="Toggle sidebar">
         <span></span><span></span><span></span>
       </button>
       <div class="page-title" id="page-title">Home — Overview</div>
@@ -268,7 +315,7 @@
       <button class="report-btn" onclick="downloadReport()">📄 Download Report</button>
       <span id="conn-badge" class="conn-badge conn-offline">● OFFLINE</span>
       <span class="badge badge-live">● LIVE</span>
-      <span class="session-badge" id="session-timer">Session: 8:00</span>
+      <span class="session-badge" id="session-badge">⏱ 8:00:00</span>
       <span style="font-size:12px;color:var(--text3)" id="clock"></span>
     </div>
   </div>
@@ -727,6 +774,21 @@
   </div>
 </div>
 
+<!-- Idle timeout overlay -->
+<div class="idle-overlay" id="idle-overlay">
+  <div class="idle-card">
+    <div style="font-size:36px;margin-bottom:8px;">⏳</div>
+    <h3>Still there?</h3>
+    <p>You've been inactive for a while.<br>You will be logged out in:</p>
+    <div class="idle-countdown" id="idle-countdown">60</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:20px;">seconds</p>
+    <div class="idle-btn-row">
+      <button class="idle-btn-continue" onclick="extendSession()">✅ Yes, keep me logged in</button>
+      <button class="idle-btn-logout" onclick="doLogout()">🚪 Sign out</button>
+    </div>
+  </div>
+</div>
+
 <button class="bot-btn" onclick="toggleBot()">🤖</button>
 <div class="bot-panel" id="bot-panel">
   <div class="bot-header">
@@ -755,15 +817,8 @@ let simAlerts = [];
 const startTime = Date.now();
 
 // ── Auth check ────────────────────────────────────────
-const token    = localStorage.getItem('token');
-const userName = localStorage.getItem('name') || '';
-const userRole = localStorage.getItem('role') || '';
+const token = localStorage.getItem('token');
 if (!token) { window.location.href = '/login'; }
-if (userName) {
-  document.getElementById('sidebar-user').innerHTML =
-    `<span style="color:var(--text2)">${userName}</span>
-     <span style="color:var(--text3);font-size:10px;display:block">${userRole.toUpperCase()}</span>`;
-}
 
 // ── Page routing ──────────────────────────────────────
 function showPage(id, btn) {
@@ -1328,23 +1383,35 @@ function fallbackBot(q) {
   return 'ShieldAI combines RF + LSTM + SHAP + IP Reputation + Geo Map + ACDA Agent for autonomous cyber defence. Ask about any specific component!';
 }
 
-// ── Sidebar toggle ────────────────────────────────────
-function toggleSidebar() {
-  const sb = document.getElementById('sidebar');
-  sb.classList.toggle('collapsed');
-  localStorage.setItem('sidebar_collapsed', sb.classList.contains('collapsed'));
+// ── Go home (logo click) ─────────────────────────────
+function goHome() {
+  showPage('home', document.getElementById('nav-home'));
 }
 
-// ── Profile dropdown ──────────────────────────────────
-let profileOpen = false;
-function toggleProfileDropdown() {
-  profileOpen = !profileOpen;
-  document.getElementById('profile-dropdown').classList.toggle('open', profileOpen);
+// ── Sidebar toggle ────────────────────────────────────
+let sidebarCollapsed = false;
+function toggleSidebar() {
+  sidebarCollapsed = !sidebarCollapsed;
+  document.getElementById('sidebar').classList.toggle('collapsed', sidebarCollapsed);
+  document.getElementById('sidebar-toggle-label').textContent = sidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar';
+  localStorage.setItem('sb_collapsed', sidebarCollapsed);
+}
+
+// ── Profile popup ─────────────────────────────────────
+let popupOpen = false;
+function toggleProfilePopup() {
+  popupOpen = !popupOpen;
+  document.getElementById('profile-popup').classList.toggle('open', popupOpen);
+  document.querySelector('.profile-chevron').textContent = popupOpen ? '▼' : '▲';
 }
 document.addEventListener('click', e => {
-  if (!document.getElementById('profile-section').contains(e.target)) {
-    profileOpen = false;
-    document.getElementById('profile-dropdown').classList.remove('open');
+  const ps = document.getElementById('profile-section');
+  if (ps && !ps.contains(e.target)) {
+    popupOpen = false;
+    const pp = document.getElementById('profile-popup');
+    if (pp) { pp.classList.remove('open'); }
+    const ch = document.querySelector('.profile-chevron');
+    if (ch) ch.textContent = '▲';
   }
 });
 
@@ -1358,45 +1425,96 @@ function toggleTheme() {
   localStorage.setItem('theme', isDark ? 'dark' : 'light');
 }
 
-// ── Session timer (8 hours = 28800s) ─────────────────
-let sessionSeconds = 8 * 60 * 60;
-function updateSessionTimer() {
-  sessionSeconds--;
-  if (sessionSeconds <= 0) { doLogout(); return; }
-  const h = Math.floor(sessionSeconds / 3600);
-  const m = Math.floor((sessionSeconds % 3600) / 60);
-  const s = sessionSeconds % 60;
-  const el = document.getElementById('session-timer');
-  if (el) {
-    if (h > 0) el.textContent = `Session: ${h}:${String(m).padStart(2,'0')}`;
-    else el.textContent = `Session: ${m}:${String(s).padStart(2,'0')}`;
-    if (sessionSeconds < 300) { el.style.background='rgba(252,129,129,0.15)'; el.style.color='var(--red)'; el.style.borderColor='rgba(252,129,129,0.3)'; }
-  }
+// ── Session countdown (8 hours) ───────────────────────
+let sessionSecs = 8 * 3600;
+function updateSessionDisplay() {
+  const h = Math.floor(sessionSecs / 3600);
+  const m = Math.floor((sessionSecs % 3600) / 60);
+  const s = sessionSecs % 60;
+  const txt = h > 0
+    ? `⏱ ${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+    : `⏱ ${m}:${String(s).padStart(2,'0')}`;
+  const b = document.getElementById('session-badge');
+  const p = document.getElementById('pp-session-time');
+  if (b) { b.textContent = txt; b.className = 'session-badge' + (sessionSecs < 300 ? ' danger' : sessionSecs < 900 ? ' warn' : ''); }
+  if (p) p.textContent = txt.replace('⏱ ','');
 }
-setInterval(updateSessionTimer, 1000);
+setInterval(() => {
+  sessionSecs--;
+  if (sessionSecs <= 0) doLogout();
+  updateSessionDisplay();
+}, 1000);
+
+// ── Idle timeout (10 min inactivity → 60s countdown) ─
+const IDLE_LIMIT = 10 * 60 * 1000; // 10 minutes
+const IDLE_GRACE = 60;              // 60 second warning
+let idleTimer, idleGraceTimer, idleCountdown = IDLE_GRACE;
+let idleActive = false;
+
+function resetIdle() {
+  if (idleActive) return;
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(showIdleWarning, IDLE_LIMIT);
+}
+
+function showIdleWarning() {
+  idleActive = true;
+  idleCountdown = IDLE_GRACE;
+  document.getElementById('idle-overlay').classList.add('show');
+  document.getElementById('idle-countdown').textContent = idleCountdown;
+  idleGraceTimer = setInterval(() => {
+    idleCountdown--;
+    document.getElementById('idle-countdown').textContent = idleCountdown;
+    if (idleCountdown <= 0) { clearInterval(idleGraceTimer); doLogout(); }
+  }, 1000);
+}
+
+function extendSession() {
+  idleActive = false;
+  clearInterval(idleGraceTimer);
+  document.getElementById('idle-overlay').classList.remove('show');
+  resetIdle();
+}
+
+['mousemove','keydown','click','scroll','touchstart'].forEach(e =>
+  document.addEventListener(e, resetIdle, { passive: true })
+);
 
 // ── Logout ────────────────────────────────────────────
 async function doLogout() {
+  clearTimeout(idleTimer);
+  clearInterval(idleGraceTimer);
   try {
     await fetch(API + '/api/logout', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+      method:'POST',
+      headers:{ 'Authorization':'Bearer ' + (localStorage.getItem('token')||'') }
     });
   } catch(e) {}
-  localStorage.removeItem('token');
-  localStorage.removeItem('username');
-  localStorage.removeItem('role');
-  localStorage.removeItem('name');
+  ['token','username','role','name'].forEach(k => localStorage.removeItem(k));
   window.location.href = '/login';
 }
 
-// ── Init ──────────────────────────────────────────────
-// Restore sidebar state
-if (localStorage.getItem('sidebar_collapsed') === 'true') {
-  document.getElementById('sidebar').classList.add('collapsed');
-}
+// ── Set profile info ──────────────────────────────────
+const _name = localStorage.getItem('name') || 'User';
+const _role = localStorage.getItem('role') || 'viewer';
+const _user = localStorage.getItem('username') || '';
+const _init = _name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) || '?';
+document.getElementById('profile-avatar').textContent   = _init;
+document.getElementById('profile-name').textContent     = _name;
+document.getElementById('profile-role').textContent     = _role.toUpperCase();
+document.getElementById('pp-avatar-big').textContent    = _init;
+document.getElementById('pp-name').textContent          = _name;
+document.getElementById('pp-username').textContent      = _user || 'shieldai-user';
+const rb = document.getElementById('pp-role-badge');
+rb.textContent = _role.toUpperCase();
+rb.className   = 'pp-role-badge pp-role-' + _role;
 
-// Restore theme
+// ── Restore preferences ───────────────────────────────
+if (localStorage.getItem('sb_collapsed') === 'true') {
+  sidebarCollapsed = true;
+  document.getElementById('sidebar').classList.add('collapsed');
+  document.getElementById('sidebar-toggle-label').textContent = 'Expand Sidebar';
+}
 if (localStorage.getItem('theme') === 'light') {
   isDark = false;
   document.body.classList.add('light');
@@ -1404,19 +1522,15 @@ if (localStorage.getItem('theme') === 'light') {
   document.getElementById('theme-label').textContent = 'Dark Mode';
 }
 
-// Set profile info
-const _name = localStorage.getItem('name') || 'User';
-const _role = localStorage.getItem('role') || 'viewer';
-const _user = localStorage.getItem('username') || '';
-const _initials = _name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) || '?';
-document.getElementById('profile-avatar').textContent = _initials;
-document.getElementById('profile-name').textContent   = _name;
-document.getElementById('profile-role').textContent   = _role.toUpperCase();
-document.getElementById('dd-name').textContent        = _name;
-document.getElementById('dd-email').textContent       = _user + ' · ' + _role;
-
+// ── Init ──────────────────────────────────────────────
 initTrafficChart();
-fetchStats(); fetchAlerts(); fetchReputation(); fetchGeo();
+resetIdle();
+updateSessionDisplay();
+// Stagger API calls to avoid all hitting at once
+fetchStats();
+setTimeout(fetchAlerts, 500);
+setTimeout(fetchReputation, 1000);
+setTimeout(fetchGeo, 1500);
 setInterval(fetchStats, 5000);
 setInterval(() => { fetchAlerts(); updateTrafficChart(); }, 3000);
 setInterval(fetchReputation, 8000);
