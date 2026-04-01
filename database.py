@@ -69,7 +69,7 @@ def init_db(app):
         db.create_all()
         if User.query.count() == 0:
             defaults = [
-                ("admin",   "admin123",   "admin",   "Admin User",  "admin@shieldai.com",   "+919999999999"),
+                ("admin",   "admin123",   "admin",   "Admin User",  "palaupendra163@gmail.com", "+919999999999"),
                 ("analyst", "analyst123", "analyst", "SOC Analyst", "analyst@shieldai.com", "+918888888888"),
                 ("viewer",  "viewer123",  "viewer",  "Viewer",      "viewer@shieldai.com",  "+917777777777"),
             ]

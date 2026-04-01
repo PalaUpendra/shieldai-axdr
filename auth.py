@@ -42,30 +42,33 @@ def login():
     if otp_method == 'sms' and not user.phone:
         return jsonify({"error": "No phone set for this account"}), 400
 
-    otp = send_otp(user, otp_method)
+    otp, actual_method = send_otp(user, otp_method)
     if not otp:
-        return jsonify({"error": f"Failed to send OTP via {otp_method}"}), 500
+        return jsonify({"error": f"Failed to send OTP via {otp_method}. Check email/phone is set."}), 500
 
     OTPStore.query.filter_by(username=username, used=False).delete()
     db.session.add(OTPStore(
         username   = username,
         otp_code   = otp,
-        method     = otp_method,
+        method     = actual_method,
         expires_at = datetime.utcnow() + timedelta(minutes=5)
     ))
     db.session.commit()
 
-    log_action(username, "OTP_SENT", f"Via {otp_method}")
+    log_action(username, "OTP_SENT", f"Via {actual_method}")
 
     hint = None
-    if otp_method == 'email' and user.email and '@' in user.email:
+    if 'email' in actual_method and user.email and '@' in user.email:
         hint = user.email[:3] + "***" + user.email[user.email.index('@'):]
 
+    fallback = (actual_method != otp_method)
+
     return jsonify({
-        "message":    f"OTP sent via {otp_method}",
-        "otp_method": otp_method,
+        "message":    f"OTP sent via {actual_method}",
+        "otp_method": actual_method,
         "username":   username,
-        "hint":       hint
+        "hint":       hint,
+        "fallback":   fallback
     })
 
 # ── Step 2: Verify OTP ────────────────────────────────

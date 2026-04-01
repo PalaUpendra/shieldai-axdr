@@ -434,10 +434,13 @@
 
       // Success — move to OTP screen
       currentUsername = username;
+      const actualMethod = data.otp_method || selectedMethod;
       document.getElementById('otp-sub').textContent =
-        `Enter the 6-digit code sent to your ${selectedMethod}`;
-      document.getElementById('otp-hint').textContent =
-        data.hint ? `Code sent to: ${data.hint}` : `OTP sent via ${data.otp_method}`;
+        `Enter the 6-digit code sent to your ${actualMethod}`;
+      let hintText = '';
+      if (data.fallback) hintText += '⚠ SMS unavailable — OTP sent to your email instead. ';
+      if (data.hint)     hintText += 'Code sent to: ' + data.hint;
+      document.getElementById('otp-hint').textContent = hintText || `OTP sent via ${actualMethod}`;
 
       showScreen('screen-otp');
       startTimer(300);
