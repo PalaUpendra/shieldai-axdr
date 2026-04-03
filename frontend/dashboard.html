@@ -248,6 +248,7 @@
     <button class="nav-item" id="nav-simulate" onclick="showPage('simulate',this)"><span class="nav-icon">🧪</span><span class="nav-label"> Simulate Attack</span></button>
     <button class="nav-item" id="nav-logs" onclick="showPage('logs',this)"><span class="nav-icon">📋</span><span class="nav-label"> Logs</span></button>
     <button class="nav-item" id="nav-models" onclick="showPage('models',this)"><span class="nav-icon">🧠</span><span class="nav-label"> AI Models</span></button>
+    <button class="nav-item" id="nav-ieee" onclick="showPage('ieee',this)"><span class="nav-icon">📐</span><span class="nav-label"> IEEE Metrics</span></button>
   </nav>
 
   <!-- Connection status -->
@@ -754,6 +755,67 @@
       </div>
     </div>
 
+    <!-- IEEE METRICS PAGE -->
+    <div class="page" id="page-ieee">
+      <!-- Overall Metrics -->
+      <div class="stats-grid" style="grid-template-columns:repeat(6,1fr)">
+        <div class="stat-card cyan">  <div class="stat-label">Accuracy</div>  <div class="stat-value" id="ieee-acc">–</div>  <div class="stat-sub">Overall</div></div>
+        <div class="stat-card green"> <div class="stat-label">Precision</div> <div class="stat-value" id="ieee-prec">–</div> <div class="stat-sub">Weighted avg</div></div>
+        <div class="stat-card purple"><div class="stat-label">Recall</div>    <div class="stat-value" id="ieee-rec">–</div>  <div class="stat-sub">Weighted avg</div></div>
+        <div class="stat-card amber"> <div class="stat-label">F1-Score</div>  <div class="stat-value" id="ieee-f1">–</div>   <div class="stat-sub">Weighted avg</div></div>
+        <div class="stat-card cyan">  <div class="stat-label">AUC-ROC</div>   <div class="stat-value" id="ieee-auc">–</div>  <div class="stat-sub">Macro OvR</div></div>
+        <div class="stat-card red">   <div class="stat-label">FPR</div>        <div class="stat-value" id="ieee-fpr">–</div>  <div class="stat-sub">False pos rate</div></div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Per-Class Metrics Table -->
+        <div class="card">
+          <div class="card-title">📋 Per-Class Performance Metrics</div>
+          <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:13px">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border)">
+                <th style="text-align:left;padding:6px 8px;color:var(--text3);font-weight:500">Attack Class</th>
+                <th style="padding:6px 8px;color:var(--text3);font-weight:500">Precision</th>
+                <th style="padding:6px 8px;color:var(--text3);font-weight:500">Recall</th>
+                <th style="padding:6px 8px;color:var(--text3);font-weight:500">F1-Score</th>
+              </tr>
+            </thead>
+            <tbody id="per-class-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Confusion Matrix -->
+        <div class="card">
+          <div class="card-title">🔲 Confusion Matrix</div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Rows = Actual class · Columns = Predicted class</div>
+          <div id="confusion-matrix-wrap" style="overflow-x:auto"></div>
+        </div>
+      </div>
+
+      <!-- Comparison Table -->
+      <div class="card">
+        <div class="card-title">⚖️ Comparison with Existing Systems (IEEE Table)</div>
+        <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:13px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border)">
+              <th style="text-align:left;padding:8px;color:var(--text3);font-weight:500">System</th>
+              <th style="padding:8px;color:var(--text3);font-weight:500">Accuracy</th>
+              <th style="padding:8px;color:var(--text3);font-weight:500">XAI</th>
+              <th style="padding:8px;color:var(--text3);font-weight:500">Auto-Response</th>
+              <th style="padding:8px;color:var(--text3);font-weight:500">Dataset</th>
+            </tr>
+          </thead>
+          <tbody id="comparison-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Per-class bar chart -->
+      <div class="card">
+        <div class="card-title">📊 Per-Class F1-Score — Bar Chart</div>
+        <canvas id="f1-bar-chart" height="80"></canvas>
+      </div>
+    </div>
+
   </div>
 
   <div class="ticker">
@@ -828,7 +890,7 @@ function showPage(id, btn) {
     home:'Home — Overview', alerts:'Live Alerts', geomap:'Geo Attack Map',
     reputation:'IP Reputation System', analytics:'Threat Analytics',
     incidents:'Incident Response', simulate:'Attack Simulation',
-    logs:'Decision Logs', models:'AI Models'
+    logs:'Decision Logs', models:'AI Models', ieee:'IEEE Performance Metrics'
   };
   document.getElementById('page-title').textContent = titles[id] || id;
   if (id === 'analytics')  renderAnalytics();
@@ -837,6 +899,7 @@ function showPage(id, btn) {
   if (id === 'reputation') renderRepPage();
   if (id === 'geomap')     initMap();
   if (id === 'simulate')   renderSimAlerts();
+  if (id === 'ieee')       fetchIEEE();
 }
 
 function updateClock() { document.getElementById('clock').textContent = new Date().toLocaleTimeString(); }
@@ -1524,6 +1587,118 @@ if (localStorage.getItem('theme') === 'light') {
 initTrafficChart();
 resetIdle();
 updateSessionDisplay();
+
+// ── IEEE Metrics ──────────────────────────────────────────────
+let ieeeLoaded = false;
+let f1BarChart = null;
+
+async function fetchIEEE() {
+  if (ieeeLoaded) return;
+  try {
+    const [mRes, cmRes, cmpRes] = await Promise.all([
+      fetch(API + '/api/metrics'),
+      fetch(API + '/api/confusion-matrix'),
+      fetch(API + '/api/comparison'),
+    ]);
+    const m   = await mRes.json();
+    const cm  = await cmRes.json();
+    const cmp = await cmpRes.json();
+
+    // Overall stat cards
+    const fmt = v => v != null ? v.toFixed(2) + '%' : '–';
+    document.getElementById('ieee-acc').textContent  = fmt(m.overall.accuracy);
+    document.getElementById('ieee-prec').textContent = fmt(m.overall.precision);
+    document.getElementById('ieee-rec').textContent  = fmt(m.overall.recall);
+    document.getElementById('ieee-f1').textContent   = fmt(m.overall.f1);
+    document.getElementById('ieee-auc').textContent  = m.overall.auc_roc != null ? m.overall.auc_roc.toFixed(4) : '–';
+    document.getElementById('ieee-fpr').textContent  = fmt(m.overall.fpr);
+
+    // Per-class table
+    const tbody = document.getElementById('per-class-tbody');
+    tbody.innerHTML = '';
+    const classColors = {DoS:'var(--red)',Normal:'var(--green)',Probe:'var(--amber)',R2L:'var(--cyan)',U2R:'var(--purple)'};
+    for (const [cls, vals] of Object.entries(m.per_class || {})) {
+      const color = classColors[cls] || 'var(--text)';
+      tbody.innerHTML += `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:7px 8px;font-weight:600;color:${color}">${cls}</td>
+        <td style="padding:7px 8px;text-align:center">${vals.precision.toFixed(2)}%</td>
+        <td style="padding:7px 8px;text-align:center">${vals.recall.toFixed(2)}%</td>
+        <td style="padding:7px 8px;text-align:center;font-weight:600;color:${color}">${vals.f1.toFixed(2)}%</td>
+      </tr>`;
+    }
+
+    // Confusion matrix heat table
+    const classes = cm.classes || [];
+    const matrix  = cm.matrix  || [];
+    let html = `<table style="border-collapse:collapse;font-size:11px;width:100%"><tr>
+      <th style="padding:4px 6px;color:var(--text3);text-align:left">↓Actual / Pred→</th>`;
+    classes.forEach(c => { html += `<th style="padding:4px 6px;color:var(--cyan);text-align:center">${c}</th>`; });
+    html += '</tr>';
+    const maxVal = Math.max(...matrix.flat(), 1);
+    matrix.forEach((row, i) => {
+      html += `<tr><td style="padding:4px 6px;font-weight:600;color:${classColors[classes[i]]||'var(--text)'}">${classes[i]}</td>`;
+      row.forEach((val, j) => {
+        const isCorrect = i === j;
+        const alpha = isCorrect ? 0.5 : Math.min(val / maxVal * 0.8, 0.6);
+        const bg = isCorrect
+          ? `rgba(104,211,145,${alpha})`
+          : val > 0 ? `rgba(252,129,129,${alpha})` : 'transparent';
+        html += `<td style="padding:5px 8px;text-align:center;background:${bg};border-radius:3px;font-weight:${isCorrect?600:400}">${val.toLocaleString()}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</table>';
+    document.getElementById('confusion-matrix-wrap').innerHTML = html;
+
+    // Comparison table
+    const ctbody = document.getElementById('comparison-tbody');
+    ctbody.innerHTML = '';
+    cmp.forEach((row, idx) => {
+      const isOurs = row.system.includes('Ours');
+      const bg     = isOurs ? 'rgba(99,179,237,0.07)' : '';
+      const accent = isOurs ? 'border-left:3px solid var(--cyan);' : '';
+      ctbody.innerHTML += `<tr style="border-bottom:1px solid var(--border);background:${bg}">
+        <td style="padding:8px 10px;font-weight:${isOurs?700:400};color:${isOurs?'var(--cyan)':'var(--text)'};;${accent}padding-left:${isOurs?'8':'10'}px">${row.system}</td>
+        <td style="padding:8px;text-align:center;font-weight:600;color:${row.accuracy>=99?'var(--green)':row.accuracy>=90?'var(--amber)':'var(--red)'}">${row.accuracy.toFixed(1)}%</td>
+        <td style="padding:8px;text-align:center">${row.xai ? '✅' : '❌'}</td>
+        <td style="padding:8px;text-align:center">${row.auto_response ? '✅' : '❌'}</td>
+        <td style="padding:8px;text-align:center;color:var(--text3);font-size:12px">NSL-KDD</td>
+      </tr>`;
+    });
+
+    // F1 bar chart
+    const labels = Object.keys(m.per_class || {});
+    const f1vals = labels.map(c => m.per_class[c].f1);
+    const chartColors = ['rgba(252,129,129,0.8)','rgba(104,211,145,0.8)','rgba(246,173,85,0.8)','rgba(99,179,237,0.8)','rgba(183,148,244,0.8)'];
+    if (f1BarChart) f1BarChart.destroy();
+    const ctx = document.getElementById('f1-bar-chart').getContext('2d');
+    f1BarChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'F1-Score (%)',
+          data: f1vals,
+          backgroundColor: chartColors,
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { min: 0, max: 100, ticks: { callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          x: { grid: { display: false } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+
+    ieeeLoaded = true;
+  } catch(e) {
+    console.error('IEEE metrics fetch failed:', e);
+  }
+}
+
 // Stagger API calls to avoid all hitting at once
 fetchStats();
 setTimeout(fetchAlerts, 500);

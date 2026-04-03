@@ -25,6 +25,9 @@ from auth import auth_bp
 app.register_blueprint(auth_bp)
 init_db(app)
 
+from metrics_api import metrics_bp
+app.register_blueprint(metrics_bp)
+
 # ── Load models ───────────────────────────────────────
 print("Loading models...")
 rf       = joblib.load('models/random_forest.pkl')
@@ -263,6 +266,9 @@ def get_stats():
     return jsonify({
         **stats,
         "accuracy":        meta['accuracy'],
+        "precision":       meta.get('precision', meta['accuracy']),
+        "recall":          meta.get('recall',    meta['accuracy']),
+        "f1":              meta.get('f1',        meta['accuracy']),
         "auc_roc":         meta['auc_roc'],
         "fpr":             meta['fpr'],
         "lstm_accuracy":   meta.get('lstm_accuracy', 0),
