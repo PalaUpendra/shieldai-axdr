@@ -911,6 +911,61 @@ let attackMap = null, mapMarkers = [];
 let simAlerts = [];
 const startTime = Date.now();
 
+function renderModelComparison() {
+    const container = document.getElementById("model-comparison");
+
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="model-row">
+            <div class="model-name">Random Forest</div>
+            <div class="model-bar-bg">
+                <div class="model-bar-fill" style="width:100%; background:linear-gradient(90deg,#4299e1,#63b3ed);"></div>
+            </div>
+            <div class="model-acc">100%</div>
+        </div>
+
+        <div class="model-row">
+            <div class="model-name">LSTM</div>
+            <div class="model-bar-bg">
+                <div class="model-bar-fill" style="width:100%; background:linear-gradient(90deg,#805ad5,#b794f4);"></div>
+            </div>
+            <div class="model-acc">100%</div>
+        </div>
+
+        <div class="model-row">
+            <div class="model-name">Fusion Score</div>
+            <div class="model-bar-bg">
+                <div class="model-bar-fill" style="width:97.3%; background:linear-gradient(90deg,#38a169,#68d391);"></div>
+            </div>
+            <div class="model-acc">97.3%</div>
+        </div>
+
+        <div class="model-row">
+            <div class="model-name">Precision</div>
+            <div class="model-bar-bg">
+                <div class="model-bar-fill" style="width:98.8%; background:linear-gradient(90deg,#d69e2e,#f6ad55);"></div>
+            </div>
+            <div class="model-acc">98.8%</div>
+        </div>
+
+        <div class="model-row">
+            <div class="model-name">Recall</div>
+            <div class="model-bar-bg">
+                <div class="model-bar-fill" style="width:98.5%; background:linear-gradient(90deg,#e53e3e,#fc8181);"></div>
+            </div>
+            <div class="model-acc">98.5%</div>
+        </div>
+
+        <div class="model-row">
+            <div class="model-name">F1-Score</div>
+            <div class="model-bar-bg">
+                <div class="model-bar-fill" style="width:98.6%; background:linear-gradient(90deg,#319795,#4fd1c5);"></div>
+            </div>
+            <div class="model-acc">98.6%</div>
+        </div>
+    `;
+}
 // ── Auth check ────────────────────────────────────────
 const token = localStorage.getItem('token');
 if (!token) { window.location.href = '/login'; }
@@ -1733,6 +1788,7 @@ if (localStorage.getItem('theme') === 'light') {
 
 // ── Init ──────────────────────────────────────────────
 initTrafficChart();
+renderModels();
 resetIdle();
 updateSessionDisplay();
 
