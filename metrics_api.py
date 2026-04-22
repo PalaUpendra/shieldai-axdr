@@ -1,9 +1,7 @@
 """
 metrics_api.py — IEEE-grade metrics endpoints for ShieldAI A-XDR+
-Adds: /api/metrics, /api/confusion-matrix, /api/comparison
-Register this blueprint in app.py:
-    from metrics_api import metrics_bp
-    app.register_blueprint(metrics_bp)
+Endpoints: /api/metrics, /api/confusion-matrix, /api/comparison,
+           /api/roc-curves, /api/class-distribution
 """
 from flask import Blueprint, jsonify
 import json, os
@@ -17,7 +15,6 @@ def load_meta():
 
 @metrics_bp.route('/api/metrics')
 def get_metrics():
-    """Returns full IEEE performance metrics."""
     meta = load_meta()
     return jsonify({
         "overall": {
@@ -28,20 +25,19 @@ def get_metrics():
             "auc_roc":   meta.get("auc_roc",   0),
             "fpr":       meta.get("fpr",       0),
         },
-        "per_class":     meta.get("per_class",        {}),
-        "lstm_accuracy": meta.get("lstm_accuracy",    0),
+        "per_class":     meta.get("per_class",     {}),
+        "lstm_accuracy": meta.get("lstm_accuracy", 0),
         "dataset": {
-            "name":    "NSL-KDD",
-            "n_train": meta.get("n_train", 0),
-            "n_test":  meta.get("n_test",  0),
-            "classes": meta.get("classes", []),
+            "name":     "NSL-KDD",
+            "n_train":  meta.get("n_train",  0),
+            "n_test":   meta.get("n_test",   0),
+            "classes":  meta.get("classes",  []),
             "features": len(meta.get("features", [])),
         }
     })
 
 @metrics_bp.route('/api/confusion-matrix')
 def get_confusion_matrix():
-    """Returns confusion matrix as 2-D list with class labels."""
     meta = load_meta()
     return jsonify({
         "matrix":  meta.get("confusion_matrix", []),
@@ -50,6 +46,20 @@ def get_confusion_matrix():
 
 @metrics_bp.route('/api/comparison')
 def get_comparison():
-    """Returns comparison table vs existing IDS/XDR systems."""
     meta = load_meta()
     return jsonify(meta.get("comparison", []))
+
+@metrics_bp.route('/api/roc-curves')
+def get_roc_curves():
+    """Per-class ROC curve data for dashboard chart."""
+    meta = load_meta()
+    return jsonify(meta.get("roc_curves", {}))
+
+@metrics_bp.route('/api/class-distribution')
+def get_class_distribution():
+    """NSL-KDD class distribution for training set bar chart."""
+    meta = load_meta()
+    return jsonify({
+        "distribution": meta.get("class_distribution", {}),
+        "n_train": meta.get("n_train", 0),
+    })

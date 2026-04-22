@@ -67,13 +67,17 @@ class AuditLog(db.Model):
 def init_db(app):
     with app.app_context():
         db.create_all()
+        # Seed default users only if table is empty
         if User.query.count() == 0:
             defaults = [
                 ("admin",   "admin123",   "admin",   "Admin User",  "palaupendra163@gmail.com", "+919999999999"),
-                ("analyst", "analyst123", "analyst", "SOC Analyst", "analyst@shieldai.com", "+918888888888"),
-                ("viewer",  "viewer123",  "viewer",  "Viewer",      "viewer@shieldai.com",  "+917777777777"),
+                ("analyst", "analyst123", "analyst", "SOC Analyst", "analyst@shieldai.com",      "+918888888888"),
+                ("viewer",  "viewer123",  "viewer",  "Viewer",      "viewer@shieldai.com",       "+917777777777"),
             ]
             for username, pwd, role, name, email, phone in defaults:
+                # Skip if username already exists (safe re-run)
+                if User.query.filter_by(username=username).first():
+                    continue
                 hashed = bcrypt.hashpw(pwd.encode(), bcrypt.gensalt()).decode()
                 db.session.add(User(
                     username=username, password=hashed,
@@ -86,3 +90,4 @@ def init_db(app):
             print("  admin   / admin123")
             print("  analyst / analyst123")
             print("  viewer  / viewer123")
+        print(f"Database ready ✅  (SQLite — shieldai.db)")

@@ -1,0 +1,36 @@
+# ShieldAI A-XDR+ — Python dependencies
+# Install with: pip install -r requirements.txt
+
+# ── Web Framework ─────────────────────────────────────
+flask==3.1.0
+flask-cors==5.0.0
+flask-sqlalchemy==3.1.1
+flask-jwt-extended==4.7.1
+
+# ── Database (SQLite is built into Python — no extra driver needed) ──
+sqlalchemy==2.0.36
+
+# ── Machine Learning ──────────────────────────────────
+scikit-learn==1.6.1
+numpy==1.26.4
+pandas==2.2.3
+joblib==1.4.2
+
+# ── Deep Learning ─────────────────────────────────────
+tensorflow==2.18.0
+
+# ── Explainability (XAI) ──────────────────────────────
+shap==0.46.0
+
+# ── Auth / Security ───────────────────────────────────
+bcrypt==4.2.1
+PyJWT==2.10.1
+
+# ── OTP / Notifications ───────────────────────────────
+requests==2.32.3
+
+# ── PDF Reports ───────────────────────────────────────
+reportlab==4.2.5
+
+# ── Utilities ─────────────────────────────────────────
+python-dotenv==1.0.1
